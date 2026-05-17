@@ -1,0 +1,15 @@
+# Node
+web/node_modules/
+web/.env
+
+# Arduino secrets
+arduino/plant_doctor_pro/config.h
+
+# Arduino build files
+arduino/build/
+*.elf
+*.hex
+
+# System files
+.DS_Store
+Thumbs.db
