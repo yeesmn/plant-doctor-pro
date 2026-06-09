@@ -1,6 +1,8 @@
 # Node
-web/node_modules/
-web/.env
+web/backend/node_modules/
+web/backend/.env
+web/frontend/node_modules/
+web/frontend/.env
 
 # Arduino secrets
 arduino/plant_doctor_pro/config.h
