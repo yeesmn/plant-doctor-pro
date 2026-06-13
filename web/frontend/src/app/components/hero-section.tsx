@@ -62,7 +62,7 @@ function HealthRing({ score }: { score: number }) {
 
 export function HeroSection() {
   const cfg = STATUS_CONFIG[PLANT.status] ?? STATUS_CONFIG["Thriving"];
-  const [data, setData] = useState(null);
+  const [data, setData] = useState<any[] | null>(null);
 
   useEffect(() => {
     // function onFetchData(jsonData: unknown) {
@@ -75,7 +75,6 @@ export function HeroSection() {
     (async () => {
       try {
         const {data: fetchedData} = await fetchDashboardData();
-        console.log(fetchedData);
         setData(fetchedData);
       } catch (error: unknown) {
         alert(error instanceof Error ? error.message : error);
