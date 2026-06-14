@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { PLANT } from "../data/mock-plant";
-import { fetchDashboardData } from "../api/dashboard";
+import { fetchDashboardData } from "../api/fetch-data";
 
 const STATUS_CONFIG: Record<string, { color: string; border: string; bg: string; text: string }> = {
   Thriving: { color: "#2E7D52", border: "rgba(46,125,82,0.3)", bg: "rgba(46,125,82,0.08)", text: "#1A5C36" },

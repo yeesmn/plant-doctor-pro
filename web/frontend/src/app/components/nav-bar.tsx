@@ -1,5 +1,16 @@
-export function NavBar() {
+import { signOutUser } from "../data/auth";
+import type { User } from "@supabase/supabase-js";
+
+export function NavBar({user}: {user: User | null}) {
   const links = ["Dashboard", "History", "Devices", "Suggestions"];
+
+    async function handleLogout() {
+    try {
+      await signOutUser();
+    } catch (error) {
+      console.error("Logout failed:", error);
+    }
+  }
 
   return (
     <nav
@@ -58,7 +69,7 @@ export function NavBar() {
             background: "rgba(46,125,82,0.08)",
             border: "1px solid rgba(46,125,82,0.25)",
             borderRadius: "999px",
-            padding: "5px 12px",
+            padding: "5px, 14px",
             display: "flex",
             alignItems: "center",
             gap: "7px",
@@ -88,6 +99,54 @@ export function NavBar() {
           </span>
         </div>
 
+        <div>
+          <button
+            onClick={handleLogout}
+            style={{
+              height: "36px",
+              padding: "0 16px",
+              borderRadius: "999px",
+              border: "1px solid #C9DDCE",
+              background: "rgba(255, 255, 255, 0.78)",
+              color: "#2F6F49",
+
+              fontFamily: "'Lora', serif",
+              fontSize: "12px",
+              fontWeight: 700,
+              letterSpacing: "0.08em",
+              textTransform: "uppercase",
+
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "8px",
+
+              cursor: "pointer",
+              boxShadow: "0 8px 22px rgba(47, 111, 73, 0.1)",
+              backdropFilter: "blur(10px)",
+              transition: "all 0.18s ease",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = "#2F7D4F";
+              e.currentTarget.style.color = "#FFFFFF";
+              e.currentTarget.style.borderColor = "#2F7D4F";
+              e.currentTarget.style.transform = "translateY(-1px)";
+              e.currentTarget.style.boxShadow =
+                "0 12px 28px rgba(47, 125, 79, 0.18)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = "rgba(255, 255, 255, 0.78)";
+              e.currentTarget.style.color = "#2F6F49";
+              e.currentTarget.style.borderColor = "#C9DDCE";
+              e.currentTarget.style.transform = "translateY(0)";
+              e.currentTarget.style.boxShadow =
+                "0 8px 22px rgba(47, 111, 73, 0.1)";
+            }}
+          >
+            <span style={{ fontSize: "13px" }}>↪</span>
+            Logout
+          </button>
+        </div>
+
         {/* Avatar */}
         <div
           style={{
@@ -102,7 +161,7 @@ export function NavBar() {
           }}
         >
           <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "12px", color: "#fff", fontWeight: 600 }}>
-            DR
+            {user?.email?.substring(0, 2).toUpperCase() ?? "..."}
           </span>
         </div>
       </div>

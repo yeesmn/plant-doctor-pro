@@ -1,36 +1,41 @@
+import { useEffect, useState } from "react";
+import { supabase } from "../supabase/supabase";
+import AuthPage from "./auth/AuthPage";
+import Dashboard from "./dashboard/Dashboard";
+
 import "../styles/fonts.css";
-import { NavBar } from "./components/nav-bar";
-import { HeroSection } from "./components/hero-section";
-import { SensorRow } from "./components/sensor-card";
-import { CareSuggestions } from "./components/care-suggestions";
-import { HistoryChart } from "./components/history-chart";
-import { DeviceFooter } from "./components/device-footer";
-import { fetchDashboardData } from "./api/dashboard";
 
-export default function App() {
-  return (
-    <div
-      style={{
-        background: "#F4F7F2",
-        minHeight: "100vh",
-        color: "#1A2E22",
-        fontFamily: "'Lora', serif",
-        display: "flex",
-        flexDirection: "column",
-      }}
-    >
-      <NavBar />
+function App() {
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [checkingAuth, setCheckingAuth] = useState(true);
 
-      <main style={{ flex: 1, padding: "32px", maxWidth: "1440px", width: "100%", margin: "0 auto" }}>
-        <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
-          <HeroSection />
-          <SensorRow />
-          <CareSuggestions />
-          <HistoryChart />
-        </div>
-      </main>
+  useEffect(() => {
+    async function checkUser() {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
 
-      <DeviceFooter />
-    </div>
-  );
+      setIsLoggedIn(Boolean(user));
+      setCheckingAuth(false);
+    }
+
+    checkUser();
+
+    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+      setIsLoggedIn(Boolean(session?.user));
+      setCheckingAuth(false);
+    });
+
+    return () => {
+      data.subscription.unsubscribe();
+    };
+  }, []);
+
+  if (checkingAuth) {
+    return <p>Loading...</p>;
+  }
+
+  return isLoggedIn ? <Dashboard /> : <AuthPage />;
 }
+
+export default App;

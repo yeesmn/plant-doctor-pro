@@ -2,64 +2,58 @@ DROP TABLE IF EXISTS care_suggestions;
 DROP TABLE IF EXISTS plant_data;
 DROP TABLE IF EXISTS devices;
 DROP TABLE IF EXISTS plant_types;
+DROP TABLE IF EXISTS profiles;
 
-CREATE EXTENSION IF NOT EXISTS pgcrypto;
+CREATE TABLE profiles (
+    id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
 
--- =====================================================
--- Plant type reference table
--- Stores ideal environmental range for each plant type
--- =====================================================
-CREATE TABLE IF NOT EXISTS plant_types (
+    display_name TEXT,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE plant_types (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
 
     plant_type TEXT UNIQUE NOT NULL,
 
-    -- Temperature range, Celsius
-    min_temperature NUMERIC,
-    max_temperature NUMERIC,
-
-    -- Humidity range, percentage
+    min_temp NUMERIC,
+    max_temp NUMERIC,
     min_humidity NUMERIC,
     max_humidity NUMERIC,
-
-    -- Light range, lux
     min_light NUMERIC,
     max_light NUMERIC,
-
-    -- Soil moisture range
-    -- If you use raw analog value, document calibration clearly.
-    -- For many capacitive sensors: higher value = drier soil.
     min_moisture NUMERIC,
     max_moisture NUMERIC,
 
-    -- Optional tilt/growth condition threshold
-    max_roll NUMERIC,
-    max_pitch NUMERIC,
+    max_abs_roll NUMERIC,
+    max_abs_pitch NUMERIC,
 
     description TEXT,
 
-    created_at TIMESTAMPTZ DEFAULT NOW()
+    created_at TIMESTAMP DEFAULT NOW(),
+
+    CHECK (min_temp IS NULL OR max_temp IS NULL OR min_temp <= max_temp),
+    CHECK (min_humidity IS NULL OR max_humidity IS NULL OR min_humidity <= max_humidity),
+    CHECK (min_light IS NULL OR max_light IS NULL OR min_light <= max_light),
+    CHECK (min_moisture IS NULL OR max_moisture IS NULL OR min_moisture <= max_moisture),
+    CHECK (max_abs_roll IS NULL OR max_abs_roll >= 0),
+    CHECK (max_abs_pitch IS NULL OR max_abs_pitch >= 0)
 );
 
--- =====================================================
--- Devices table
--- Each Arduino kit/device is connected to one plant type
--- =====================================================
-CREATE TABLE IF NOT EXISTS devices (
+CREATE TABLE devices (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
 
-    plant_type_id UUID NOT NULL REFERENCES plant_types(id) ON DELETE RESTRICT,
+    user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+    plant_type_id UUID REFERENCES plant_types(id) ON DELETE SET NULL,
 
-    plant_name TEXT UNIQUE NOT NULL,
+    plant_name TEXT NOT NULL,
 
-    created_at TIMESTAMPTZ DEFAULT NOW()
+    created_at TIMESTAMP DEFAULT NOW(),
+
+    UNIQUE(user_id, plant_name)
 );
 
--- =====================================================
--- Sensor readings table
--- Stores Arduino sensor data
--- =====================================================
-CREATE TABLE IF NOT EXISTS plant_data (
+CREATE TABLE plant_data (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
 
     device_id UUID NOT NULL REFERENCES devices(id) ON DELETE CASCADE,
@@ -70,30 +64,16 @@ CREATE TABLE IF NOT EXISTS plant_data (
     humidity NUMERIC,
     roll NUMERIC,
     pitch NUMERIC,
-
     plant_status TEXT,
 
-    recorded_at TIMESTAMPTZ DEFAULT NOW()
+    recorded_at TIMESTAMP DEFAULT NOW()
 );
 
--- =====================================================
--- Care suggestions table
--- Suggestions can optionally reference a specific reading
--- =====================================================
-CREATE TABLE IF NOT EXISTS care_suggestions (
+CREATE TABLE care_suggestions (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
 
     device_id UUID NOT NULL REFERENCES devices(id) ON DELETE CASCADE,
 
-    plant_data_id UUID REFERENCES plant_data(id) ON DELETE SET NULL,
-
-    suggestion TEXT NOT NULL,
-
-    created_at TIMESTAMPTZ DEFAULT NOW()
+    suggestion TEXT,
+    created_at TIMESTAMP DEFAULT NOW()
 );
-
--- 이 정책이 없으면 데이터가 있어도 빈 배열 반환됨
-CREATE POLICY "Allow public read"
-ON devices
-FOR SELECT
-USING (true);
