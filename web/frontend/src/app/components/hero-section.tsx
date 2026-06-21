@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
-import { PLANT } from "../data/mock-plant";
-import { fetchDashboardData } from "../api/fetch-data";
+import type { HeroView } from "../api/dashboard-view";
 
 const STATUS_CONFIG: Record<string, { color: string; border: string; bg: string; text: string }> = {
   Thriving: { color: "#2E7D52", border: "rgba(46,125,82,0.3)", bg: "rgba(46,125,82,0.08)", text: "#1A5C36" },
@@ -60,27 +59,10 @@ function HealthRing({ score }: { score: number }) {
   );
 }
 
-export function HeroSection() {
-  const cfg = STATUS_CONFIG[PLANT.status] ?? STATUS_CONFIG["Thriving"];
-  const [data, setData] = useState<any[] | null>(null);
-
-  useEffect(() => {
-    // function onFetchData(jsonData: unknown) {
-    //   console.log(jsonData);
-    // }
-    // function onError(error: Error) {
-    //   alert(error.message);
-    // }
-    // fetchDashboardData().then(onFetchData).catch(onError);
-    (async () => {
-      try {
-        const {data: fetchedData} = await fetchDashboardData();
-        setData(fetchedData);
-      } catch (error: unknown) {
-        alert(error instanceof Error ? error.message : error);
-      }
-    })();
-  }, []);
+export function HeroSection({ hero, loading }: { hero?: HeroView; loading?: boolean }) {
+  const status = hero?.status ?? "Mildly Stressed";
+  const cfg = STATUS_CONFIG[status] ?? STATUS_CONFIG["Thriving"];
+  const name = hero?.name ?? (loading ? "Loading…" : "—");
 
   return (
     <div
@@ -92,6 +74,8 @@ export function HeroSection() {
         position: "relative",
         overflow: "hidden",
         boxShadow: "0 1px 4px rgba(46,125,82,0.06), 0 4px 24px rgba(46,125,82,0.04)",
+        opacity: loading ? 0.6 : 1,
+        transition: "opacity 0.3s",
       }}
     >
       {/* Soft blob shapes */}
@@ -121,7 +105,7 @@ export function HeroSection() {
 
       <div className="relative flex flex-col md:flex-row items-center gap-10">
         <div className="flex-shrink-0">
-          <HealthRing score={PLANT.healthScore} />
+          <HealthRing score={hero?.healthScore ?? 0} />
         </div>
 
         <div className="flex flex-col gap-3 flex-1">
@@ -138,9 +122,11 @@ export function HeroSection() {
               letterSpacing: "-0.01em",
             }}
           >
-            {/* {PLANT.name} */}
-            {/* TODO: 이름을 여기에 */}
+            {name}
           </h1>
+          <div style={{ fontFamily: "'Lora', serif", fontSize: "15px", color: "#4A6855", fontStyle: "italic" }}>
+            {hero?.species ?? ""}
+          </div>
           <div className="flex items-center gap-3 mt-1 flex-wrap">
             <span
               style={{
@@ -154,14 +140,14 @@ export function HeroSection() {
                 letterSpacing: "0.05em",
               }}
             >
-              {PLANT.status}
+              {status}
             </span>
             <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "12px", color: "#6B8F76" }}>
-              Health Score: {PLANT.healthScore}/100
+              Health Score: {hero?.healthScore ?? 0}/100
             </span>
           </div>
           <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "12px", color: "#6B8F76", marginTop: "4px", letterSpacing: "0.03em" }}>
-            Last updated {PLANT.lastUpdated} · {PLANT.sensorNode}
+            Last updated {hero?.lastUpdated ?? "—"} · {hero?.sensorNode ?? "—"}
           </div>
         </div>
 
@@ -178,9 +164,10 @@ export function HeroSection() {
           }}
         >
           {[
-            { label: "Days monitored", value: "47" },
-            { label: "Watering events", value: "12" },
-            { label: "Alerts this week", value: "3" },
+            { label: "Days monitored", value: hero ? String(hero.daysMonitored) : "—" },
+            // Not tracked in the database yet — needs a watering log + alerts table.
+            { label: "Watering events", value: "—" },
+            { label: "Alerts this week", value: "—" },
           ].map((item) => (
             <div key={item.label} className="flex flex-col gap-1">
               <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "10px", color: "#6B8F76", letterSpacing: "0.08em", textTransform: "uppercase" }}>

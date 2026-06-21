@@ -1,6 +1,6 @@
 import { Droplets, Sun, Thermometer, Move } from "lucide-react";
 import { LineChart, Line, ResponsiveContainer, Tooltip } from "recharts";
-import { SENSORS } from "../data/mock-plant";
+import type { SensorView } from "../api/dashboard-view";
 
 const ICON_MAP: Record<string, React.ReactNode> = {
   moisture: <Droplets size={20} />,
@@ -9,7 +9,7 @@ const ICON_MAP: Record<string, React.ReactNode> = {
   tilt: <Move size={20} />,
 };
 
-function SensorCard({ sensor }: { sensor: (typeof SENSORS)[0] }) {
+function SensorCard({ sensor }: { sensor: SensorView }) {
   const isStressed = sensor.state === "stressed";
   const valueColor = isStressed ? "#B8690A" : "#2E7D52";
   const borderHover = isStressed ? "#B8690A" : "#2E7D52";
@@ -110,10 +110,56 @@ function SensorCard({ sensor }: { sensor: (typeof SENSORS)[0] }) {
   );
 }
 
-export function SensorRow() {
+function SkeletonCard() {
+  return (
+    <div
+      className="flex-1"
+      style={{
+        background: "#FFFFFF",
+        border: "1px solid #D8E8DC",
+        borderRadius: "16px",
+        padding: "24px",
+        height: 196,
+        minWidth: 0,
+        opacity: 0.5,
+        animation: "pulse 1.4s ease-in-out infinite",
+      }}
+    />
+  );
+}
+
+export function SensorRow({ sensors, loading }: { sensors?: SensorView[]; loading?: boolean }) {
+  if (loading && !sensors) {
+    return (
+      <div className="flex gap-4 flex-wrap md:flex-nowrap">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <SkeletonCard key={i} />
+        ))}
+      </div>
+    );
+  }
+
+  if (!sensors || sensors.length === 0) {
+    return (
+      <div
+        style={{
+          background: "#FFFFFF",
+          border: "1px solid #D8E8DC",
+          borderRadius: "16px",
+          padding: "24px",
+          fontFamily: "'DM Mono', monospace",
+          fontSize: "12px",
+          color: "#6B8F76",
+        }}
+      >
+        No sensor readings yet.
+      </div>
+    );
+  }
+
   return (
     <div className="flex gap-4 flex-wrap md:flex-nowrap">
-      {SENSORS.map((s) => (
+      {sensors.map((s) => (
         <SensorCard key={s.id} sensor={s} />
       ))}
     </div>

@@ -10,7 +10,7 @@ import {
   ReferenceLine,
   ResponsiveContainer,
 } from "recharts";
-import { HISTORY } from "../data/mock-plant";
+import type { HistoryPoint } from "../api/dashboard-view";
 
 type Range = "7D" | "30D" | "90D";
 
@@ -50,10 +50,17 @@ const CustomLegend = ({ payload }: { payload?: { color: string; value: string }[
   </div>
 );
 
-export function HistoryChart() {
+export function HistoryChart({
+  history,
+  loading,
+}: {
+  history?: Record<Range, HistoryPoint[]>;
+  loading?: boolean;
+}) {
   const [range, setRange] = useState<Range>("30D");
-  const data = HISTORY[range];
-  const wateredPoints = data.filter((d) => d.watered).map((d) => d.date);
+  const data = history?.[range] ?? [];
+  // Watering events aren't recorded in the database, so there are no markers.
+  const wateredPoints: string[] = [];
 
   return (
     <div
@@ -72,7 +79,7 @@ export function HistoryChart() {
             Environmental History
           </h2>
           <p style={{ fontFamily: "'DM Mono', monospace", fontSize: "11px", color: "#6B8F76" }}>
-            Soil moisture & temperature over time · vertical lines mark watering events
+            Soil moisture & temperature over time · daily averages
           </p>
         </div>
         {/* Range toggle */}
@@ -111,6 +118,19 @@ export function HistoryChart() {
 
       {/* Chart */}
       <div style={{ height: 280 }}>
+        {data.length === 0 ? (
+          <div
+            className="flex items-center justify-center"
+            style={{
+              height: "100%",
+              fontFamily: "'DM Mono', monospace",
+              fontSize: "12px",
+              color: "#6B8F76",
+            }}
+          >
+            {loading ? "Loading history…" : "No history for this range yet."}
+          </div>
+        ) : (
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart data={data} margin={{ top: 8, right: 16, bottom: 0, left: 0 }}>
             <CartesianGrid key="grid" stroke="#EAF2ED" strokeDasharray="3 3" vertical={false} />
@@ -179,6 +199,7 @@ export function HistoryChart() {
             />
           </ComposedChart>
         </ResponsiveContainer>
+        )}
       </div>
     </div>
   );

@@ -1,51 +1,73 @@
 import { supabase } from "../../supabase/supabase";
 
-export async function fetchDashboardData() {
-  // const response = await fetch("http://localhost:3000/api/sensor-data/0b2cf30c-d327-475b-b729-e5aab906b9d0");
+// ─── Database row types ──────────────────────────────────────────────
+export type PlantType = {
+  id: string;
+  plant_type: string;
+  min_temp: number | null;
+  max_temp: number | null;
+  min_humidity: number | null;
+  max_humidity: number | null;
+  min_light: number | null;
+  max_light: number | null;
+  min_moisture: number | null;
+  max_moisture: number | null;
+  max_abs_roll: number | null;
+  max_abs_pitch: number | null;
+  description: string | null;
+};
 
-  // if (!response.ok) {
-  //   throw new Error("Failed to fetch dashboard data");
-  // }
+export type Device = {
+  id: string;
+  user_id: string;
+  plant_type_id: string | null;
+  plant_name: string;
+  created_at: string;
+  plant_types: PlantType | null; // joined row
+};
 
-  // return response.json();
+export type PlantReading = {
+  id: string;
+  device_id: string;
+  moisture: number | null;
+  light: number | null;
+  temperature: number | null;
+  humidity: number | null;
+  roll: number | null;
+  pitch: number | null;
+  plant_status: string | null;
+  recorded_at: string;
+};
+
+// ─── Queries (RLS restricts every result to the logged-in user) ──────
+
+// The user's most-recently-created device, with its plant_type joined.
+export async function fetchNewestDevice(): Promise<Device | null> {
   const { data, error } = await supabase
-    .from('devices')
-    .select('*')
-    .order('created_at', { ascending: false })
+    .from("devices")
+    .select("*, plant_types(*)")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
 
-  if (error) {
-    console.error(error);
-    return {data: null};
-  }
-
-  console.info(data);
-
-  return {data} as {data: any[]};
-
+  if (error) throw error;
+  return (data as Device | null) ?? null;
 }
 
+// All readings for a device within the last `days`, oldest-first (chart order).
+export async function fetchReadings(
+  deviceId: string,
+  days = 90
+): Promise<PlantReading[]> {
+  const since = new Date(Date.now() - days * 86_400_000).toISOString();
 
+  const { data, error } = await supabase
+    .from("plant_data")
+    .select("*")
+    .eq("device_id", deviceId)
+    .gte("recorded_at", since)
+    .order("recorded_at", { ascending: true });
 
-// 0b2cf30c-d327-475b-b729-e5aab906b9d0
-
-// ts// READ
-// const { data, error } = await supabase
-//   .from('plant_data')
-//   .select('*')
-
-// // CREATE
-// const { data, error } = await supabase
-//   .from('plant_data')
-//   .insert([{ moisture: 450, temperature: 22.5 }])
-
-// // UPDATE
-// const { data, error } = await supabase
-//   .from('plant_data')
-//   .update({ moisture: 500 })
-//   .eq('id', 1)
-
-// // DELETE
-// const { data, error } = await supabase
-//   .from('plant_data')
-//   .delete()
-//   .eq('id', 1)
+  if (error) throw error;
+  return (data as PlantReading[]) ?? [];
+}

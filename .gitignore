@@ -3,6 +3,7 @@ web/backend/node_modules/
 web/backend/.env
 web/frontend/node_modules/
 web/frontend/.env
+web/frontend/dist/
 
 # Arduino secrets
 arduino/plant_doctor_pro/config.h
