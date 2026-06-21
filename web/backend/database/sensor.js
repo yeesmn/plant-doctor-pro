@@ -1,19 +1,14 @@
 
 import express from 'express'
-import { createClient } from '@supabase/supabase-js'
+import { supabase } from '../js/supabase.js'
 
 const router = express.Router()
-
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_KEY
-)
 
 // ─── POST /api/sensor-data ───────────────────────────────────────────
 // Arduino calls this to SAVE a new sensor reading
 router.post('/sensor-data', async (req, res) => {
 
-  const { device_id, moisture, light, temperature, plant_status } = req.body
+  const { device_id, moisture, light, temperature, humidity, roll, pitch, plant_status } = req.body
 
   // device_id is required — it links the reading to a plant
   if (!device_id) {
@@ -25,7 +20,7 @@ router.post('/sensor-data', async (req, res) => {
     .from('devices')
     .select('id')
     .eq('id', device_id)
-    //.single()
+    .single()
 
   if (deviceError) {
     return res.status(500).json({ error: deviceError.message })
@@ -38,7 +33,7 @@ router.post('/sensor-data', async (req, res) => {
   // Insert the new reading row
   const { data, error } = await supabase
     .from('plant_data')
-    .insert({ device_id, moisture, light, temperature, plant_status })
+    .insert({ device_id, moisture, light, temperature, humidity, roll, pitch, plant_status })
 
   if (error) {
     return res.status(500).json({ error: error.message })
@@ -121,7 +116,7 @@ router.put('/sensor-data/:id', async (req, res) => {
 
   // Only pull the fields that are allowed to be updated
   // device_id and recorded_at should NOT be changeable after creation
-  const { moisture, light, temperature, plant_status } = req.body
+  const { moisture, light, temperature, humidity, roll, pitch, plant_status } = req.body
 
   // Build the update object — only include fields that were actually sent
   // This prevents overwriting existing values with undefined
@@ -129,6 +124,9 @@ router.put('/sensor-data/:id', async (req, res) => {
   if (moisture    !== undefined) updates.moisture     = moisture
   if (light       !== undefined) updates.light        = light
   if (temperature !== undefined) updates.temperature  = temperature
+  if (humidity    !== undefined) updates.humidity     = humidity
+  if (roll        !== undefined) updates.roll         = roll
+  if (pitch       !== undefined) updates.pitch        = pitch
   if (plant_status !== undefined) updates.plant_status = plant_status
 
   // If the request body was empty, there's nothing to update
