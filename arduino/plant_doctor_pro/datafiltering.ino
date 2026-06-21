@@ -20,6 +20,8 @@
 // 5:00 - average computed → POST sent to backend
 // --------------------
 
+#include "globals.h"     // extern declarations for cross-file globals
+
 // --------------------
 // How many readings to collect before averaging
 // --------------------

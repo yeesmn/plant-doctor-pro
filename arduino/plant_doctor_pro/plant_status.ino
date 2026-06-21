@@ -5,6 +5,8 @@
 // based on filtered sensor values.
 // --------------------
 
+#include "globals.h"     // String type + shared declarations
+
 String calculatePlantStatus(float moisture, float light, float temperature) {
   // Moisture logic
   // For most capacitive moisture sensors:

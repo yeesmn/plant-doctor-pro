@@ -1,58 +1,18 @@
+// --------------------
+// wifi_post.ino
+// --------------------
+// WiFi connection + HTTP POST helpers.
+// setup()/loop() now live in plant_doctor_pro.ino (the main sketch).
+// Secrets (WiFi creds, server IP, device id) come from config.h.
+// --------------------
+
 #include <WiFiS3.h>
 #include <ArduinoHttpClient.h>
-
-// --------------------
-// WiFi info
-// --------------------
-char ssid[] = "YOUR_WIFI_NAME";
-char pass[] = "YOUR_WIFI_PASSWORD";
-
-// --------------------
-// Server info
-// Use your Mac's LAN IP, not localhost
-// Example: 192.168.0.25
-// --------------------
-char serverAddress[] = "192.168.0.25";
-int port = 3000;
-
-// This must match plant_name in your devices table
-String plantName = "basil_001";
+#include "globals.h"
+#include "config.h"
 
 WiFiClient wifi;
-HttpClient client = HttpClient(wifi, serverAddress, port);
-
-void setup() {
-  Serial.begin(9600);
-
-  while (!Serial) {
-    ;
-  }
-
-  Serial.println("=== Plant Doctor Arduino POST Test ===");
-
-  // Initialize all sensors
-  sensorsInit();
-
-  pinMode(MOISTURE_PIN, INPUT);
-
-  connectToWiFi();
-}
-
-void loop() {
-  if (WiFi.status() != WL_CONNECTED) {
-    Serial.println("WiFi disconnected. Reconnecting...");
-    connectToWiFi();
-  }
-
-  // datafiltering.ino handles 30-second sampling internally
-  collectSample();
-
-  // When 10 samples are averaged, send to backend
-  if (dataReady) {
-    sendSensorData();
-    dataReady = false;
-  }
-}
+HttpClient client = HttpClient(wifi, SERVER_IP, SERVER_PORT);
 
 void connectToWiFi() {
   if (WiFi.status() == WL_NO_MODULE) {
@@ -61,10 +21,10 @@ void connectToWiFi() {
   }
 
   Serial.print("Connecting to WiFi: ");
-  Serial.println(ssid);
+  Serial.println(WIFI_SSID);
 
   while (WiFi.status() != WL_CONNECTED) {
-    WiFi.begin(ssid, pass);
+    WiFi.begin(WIFI_SSID, WIFI_PASS);
     Serial.print(".");
     delay(3000);
   }
@@ -86,12 +46,18 @@ void sendSensorData() {
     filtered_temp
   );
 
-  String path = "/api/sensor-data/";
+  String path = "/api/sensor-data";
 
+  // device_id is REQUIRED by the backend — it links this reading to a plant.
+  // Without it the server responds 400 "device_id is required".
   String jsonData = "{";
-  jsonData += "\"moisture\":" + String(filtered_moisture, 2) + ",";
-  jsonData += "\"light\":" + String(filtered_lux, 2) + ",";
+  jsonData += "\"device_id\":\"" + String(DEVICE_ID) + "\",";
+  jsonData += "\"moisture\":"    + String(filtered_moisture, 2) + ",";
+  jsonData += "\"light\":"       + String(filtered_lux, 2) + ",";
   jsonData += "\"temperature\":" + String(filtered_temp, 2) + ",";
+  jsonData += "\"humidity\":"    + String(filtered_hum, 2) + ",";
+  jsonData += "\"roll\":"        + String(filtered_roll, 2) + ",";
+  jsonData += "\"pitch\":"       + String(filtered_pitch, 2) + ",";
   jsonData += "\"plant_status\":\"" + plantStatus + "\"";
   jsonData += "}";
 
@@ -123,4 +89,3 @@ void sendSensorData() {
 
   Serial.println("--------------------");
 }
-

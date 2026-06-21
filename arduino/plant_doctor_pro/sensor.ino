@@ -8,7 +8,7 @@
 // - sensorsRead()          ← replaces loop()
 // - BH1750 helper functions
 //
-// NO setup() or loop() here — those live in wifi_post.ino only
+// NO setup() or loop() here — setup()/loop() live in plant_doctor_pro.ino
 // --------------------
 
 #include <Wire.h>
@@ -16,6 +16,7 @@
 #include "I2Cdev.h"
 #include "MPU6050.h"
 #include "Adafruit_SHT31.h"
+#include "globals.h"     // extern declarations so other files see these globals
 
 // ---------- MPU6050 ----------
 MPU6050 accelgyro;
@@ -53,6 +54,8 @@ int      moistureRaw = 0;
 // --------------------
 void sensorsInit() {
   Wire.begin();
+
+  pinMode(MOISTURE_PIN, INPUT);   // moisture pin setup (was previously in setup())
 
   Serial.print("MPU6050: ");
   Serial.println(accelgyro.initialize() ? "connected" : "connection failed");
