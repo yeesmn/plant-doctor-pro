@@ -27,11 +27,11 @@ INSERT INTO public.plant_types (
 VALUES
     (
         'Monstera deliciosa',
-        18, 30,
-        40, 70,
-        1000, 10000,
-        40, 70,
-        15, 15,
+        18, 30, -- temp
+        40, 70, -- humidity
+        1000, 10000, -- light
+        40, 70, -- moisture
+        15, 15, -- roll, pitch
         'Tropical indoor plant that prefers bright indirect light, moderate moisture, and stable humidity.'
     ),
     (
