@@ -20,3 +20,9 @@ Thumbs.db
 # Supabase
 supabase/.temp/
 .supabase/
+
+
+# Local-only agent files
+.brain
+AGENTS.md
+CLAUDE.md
