@@ -22,7 +22,7 @@ supabase/.temp/
 .supabase/
 
 
-# Local-only agent files
+# Local-only agent files (Jun)
 .brain
 AGENTS.md
 CLAUDE.md
