@@ -26,6 +26,10 @@ dashboard runs on live data (`VITE_USE_MOCK=false`).
 What remains is **Phase 5** below — data-quality and reliability problems that the
 happy-path test did not cover.
 
+> ⚠ **5.1 is written but unproven on hardware.** The moisture-to-percent firmware has not
+> been compiled or uploaded yet. The checklist to work through is in
+> [worklog-2026-07-25.md](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/docs/worklog-2026-07-25.md).
+
 ---
 
 ## Step-by-Step Execution Plan
