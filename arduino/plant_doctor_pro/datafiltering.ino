@@ -68,7 +68,8 @@ float filtered_pitch    = 0.0;
 float filtered_lux      = 0.0;
 float filtered_temp     = 0.0;
 float filtered_hum      = 0.0;
-float filtered_moisture = 0.0;
+float filtered_moisture = 0.0;   // averaged RAW adc value — kept for debugging
+float filtered_moisture_pct = 0.0;   // the same value as 0-100 % — this is what we POST
 
 // --------------------
 // collectSample()
@@ -108,8 +109,8 @@ void collectSample() {
   Serial.print(sampleIndex + 1);    // +1 so it prints 1-10 instead of 0-9
   Serial.print("/");
   Serial.print(SAMPLE_COUNT);
-  Serial.print(" collected | moisture=");
-  Serial.print(moistureRaw);
+  Serial.print(" collected | moisture(raw)=");
+  Serial.print(moistureRaw);    // raw on purpose — read this when calibrating config.h
   Serial.print(" | lux=");
   Serial.print(lightOK ? lux : -1.0);
   Serial.print(" | temp=");
@@ -191,6 +192,14 @@ void computeAverages() {
   filtered_hum      = countHum      > 0 ? sumHum      / countHum      : -1.0;
   filtered_moisture = countMoisture > 0 ? sumMoisture / (float)countMoisture : -1.0;
 
+  // --------------------
+  // Convert the averaged raw value to a percentage (sensor.ino).
+  // Averaging first, converting second: the mapping is linear, so the result
+  // is the same — but clamping once at the end avoids biasing the average
+  // when individual samples fall outside the calibrated range.
+  // --------------------
+  filtered_moisture_pct = moistureToPercent(filtered_moisture);
+
   // Print the computed averages to Serial for debugging
   Serial.println("\n===== Averaged Data Ready =====");
   Serial.print("Roll:        "); Serial.println(filtered_roll);
@@ -198,6 +207,8 @@ void computeAverages() {
   Serial.print("Lux:         "); Serial.println(filtered_lux);
   Serial.print("Temperature: "); Serial.println(filtered_temp);
   Serial.print("Humidity:    "); Serial.println(filtered_hum);
-  Serial.print("Moisture:    "); Serial.println(filtered_moisture);
+  Serial.print("Moisture:    "); Serial.print(filtered_moisture_pct);
+  Serial.print(" % (raw ");     Serial.print(filtered_moisture);
+  Serial.println(")");
   Serial.println("================================\n");
 }

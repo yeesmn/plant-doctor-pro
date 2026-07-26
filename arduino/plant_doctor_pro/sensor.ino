@@ -17,6 +17,11 @@
 #include "MPU6050.h"
 #include "Adafruit_SHT31.h"
 #include "globals.h"     // extern declarations so other files see these globals
+#include "config.h"      // MOISTURE_RAW_DRY / MOISTURE_RAW_WET calibration
+
+#if MOISTURE_RAW_DRY <= MOISTURE_RAW_WET
+#error "MOISTURE_RAW_DRY must be greater than MOISTURE_RAW_WET (capacitive probes read higher when dry). Check config.h."
+#endif
 
 // ---------- MPU6050 ----------
 MPU6050 accelgyro;
@@ -111,6 +116,26 @@ void sensorsRead() {
   Serial.print(" | Temp: ");    Serial.print(isnan(temp) ? -1.0 : temp);
   Serial.print(" | Hum: ");     Serial.print(isnan(hum) ? -1.0 : hum);
   Serial.print(" | Moisture: "); Serial.println(moistureRaw);
+}
+
+// --------------------
+// moistureToPercent()
+// Converts a raw ADC reading into 0-100 %, using the two calibration points
+// in config.h. Everything downstream (plant_status, the POST body, the
+// database, the dashboard) works in percent — raw values never leave here.
+//
+// The mapping is linear and inverted: MOISTURE_RAW_DRY → 0 %, WET → 100 %.
+// Readings outside the calibrated span are clamped, so a probe drying out
+// past the dry reference reports 0 % instead of a negative number.
+// -1 (the "failed read" sentinel) passes straight through.
+// --------------------
+float moistureToPercent(float raw) {
+  if (raw < 0) return -1.0;    // sentinel — keep it intact for the backend
+
+  float span    = (float)(MOISTURE_RAW_DRY - MOISTURE_RAW_WET);
+  float percent = (MOISTURE_RAW_DRY - raw) * 100.0 / span;
+
+  return constrain(percent, 0.0, 100.0);
 }
 
 // ---------- BH1750 Helpers ----------

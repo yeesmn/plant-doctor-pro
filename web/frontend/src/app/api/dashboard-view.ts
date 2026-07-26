@@ -72,13 +72,14 @@ function shortDate(iso: string): string {
   return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
-// Health score from temperature, humidity, light, and tilt. Moisture is
-// excluded because the firmware sends raw analog values while plant_types
-// ranges are percentages (units don't match until the sensor is calibrated).
+// Health score averaged over every factor we have a range for: moisture,
+// temperature, humidity, light, and tilt. Factors with no reading (-1/null)
+// or no configured range drop out instead of counting as zero.
 function computeHealth(latest: PlantReading, pt: PlantType | null): number {
   if (!pt) return 100;
   const tilt = maxTilt(latest);
   const scores = [
+    factorScore(clean(latest.moisture), pt.min_moisture, pt.max_moisture),
     factorScore(clean(latest.temperature), pt.min_temp, pt.max_temp),
     factorScore(clean(latest.humidity), pt.min_humidity, pt.max_humidity),
     factorScore(clean(latest.light), pt.min_light, pt.max_light),
@@ -116,10 +117,11 @@ function buildSensors(latest: PlantReading, readings: PlantReading[], pt: PlantT
     {
       id: "moisture",
       label: "Soil Moisture",
-      value: fmt(clean(latest.moisture), " raw"),
-      unit: " raw",
-      // raw-vs-% mismatch → fall back to plant_status keywords for state
-      state: /water|wet/i.test(latest.plant_status ?? "") ? "stressed" : "healthy",
+      value: fmt(clean(latest.moisture), "%"),
+      unit: "%",
+      state: inRange(clean(latest.moisture), pt?.min_moisture ?? null, pt?.max_moisture ?? null)
+        ? "healthy"
+        : "stressed",
       sparkline: sparkline(readings, (r) => clean(r.moisture)),
     },
     {

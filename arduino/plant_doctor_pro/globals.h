@@ -35,7 +35,8 @@ extern float filtered_pitch;
 extern float filtered_lux;
 extern float filtered_temp;
 extern float filtered_hum;
-extern float filtered_moisture;
+extern float filtered_moisture;      // averaged RAW adc value (debug only)
+extern float filtered_moisture_pct;  // same reading as 0-100 % — this is what gets sent
 
 // ---- Pipeline flag: true when 10 samples are averaged and ready to POST ----
 extern bool dataReady;
@@ -43,9 +44,10 @@ extern bool dataReady;
 // ---- Function prototypes (cross-file calls) ----
 void   sensorsInit();      // sensor.ino
 void   sensorsRead();      // sensor.ino
+float  moistureToPercent(float raw);  // sensor.ino — raw adc → 0-100 %
 void   collectSample();    // datafiltering.ino
 void   computeAverages();  // datafiltering.ino
-String calculatePlantStatus(float moisture, float light, float temperature); // plant_status.ino
+String calculatePlantStatus(float moisturePct, float light, float temperature); // plant_status.ino
 void   connectToWiFi();    // wifi_post.ino
 void   sendSensorData();   // wifi_post.ino
 

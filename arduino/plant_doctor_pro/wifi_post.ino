@@ -40,8 +40,10 @@ void connectToWiFi() {
 }
 
 void sendSensorData() {
+  // Moisture goes out as a PERCENTAGE, never the raw ADC value — the
+  // database and the dashboard both expect percent (see config.h calibration).
   String plantStatus = calculatePlantStatus(
-    filtered_moisture,
+    filtered_moisture_pct,
     filtered_lux,
     filtered_temp
   );
@@ -52,7 +54,7 @@ void sendSensorData() {
   // Without it the server responds 400 "device_id is required".
   String jsonData = "{";
   jsonData += "\"device_id\":\"" + String(DEVICE_ID) + "\",";
-  jsonData += "\"moisture\":"    + String(filtered_moisture, 2) + ",";
+  jsonData += "\"moisture\":"    + String(filtered_moisture_pct, 2) + ",";
   jsonData += "\"light\":"       + String(filtered_lux, 2) + ",";
   jsonData += "\"temperature\":" + String(filtered_temp, 2) + ",";
   jsonData += "\"humidity\":"    + String(filtered_hum, 2) + ",";

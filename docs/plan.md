@@ -103,7 +103,7 @@ within each tier.
 
 | # | Issue | Priority |
 |---|---|---|
-| [5.1](#51--soil-moisture-is-uncalibrated-blocks-health-scoring--p1) | Soil moisture is uncalibrated | P1 |
+| [5.1](#51--soil-moisture-is-uncalibrated-blocks-health-scoring--p1-code-done--needs-measuring) | Soil moisture is uncalibrated | P1 — code done, needs measuring |
 | [5.2](#52--recorded_at-has-no-time-zone--p1-quick) | `recorded_at` has no time zone | P1 (quick) |
 | [5.3](#53--service_role-key-sits-in-the-frontend-env--p2-quick) | `service_role` key sits in the frontend `.env` | P2 (quick) |
 | [5.4](#54--no-long-run-reliability-data--p2) | No long-run reliability data | P2 |
@@ -111,32 +111,44 @@ within each tier.
 | [5.6](#56--dashboard-sections-still-on-mock-data--p3) | Dashboard sections still on mock data | P3 |
 | [5.7](#57--the-pipeline-depends-on-the-pc-being-awake--p3) | The pipeline depends on the PC being awake | P3 |
 
-### 5.1 — Soil moisture is uncalibrated (blocks health scoring) — **P1**
+### 5.1 — Soil moisture is uncalibrated (blocks health scoring) — **P1, code done / needs measuring**
 
-The firmware sends **raw analog** values (0–1023) while `plant_types.min_moisture` /
-`max_moisture` and the UI both assume **percent**. Because the units don't match,
-moisture is currently worked around in three places instead of being used:
+The firmware sent **raw analog** values (0-1023) while `plant_types.min_moisture` /
+`max_moisture` and the UI both assume **percent**, so moisture was worked around in
+three places instead of being used.
 
-| Where | Current workaround |
+**Code changes (done):** the conversion lives in the firmware — `plant_data.moisture`
+now only ever receives percent.
+
+| File | Change |
 |---|---|
-| [dashboard-view.ts](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/web/frontend/src/app/api/dashboard-view.ts) `computeHealth()` | moisture is **excluded from the health score entirely** |
-| [dashboard-view.ts](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/web/frontend/src/app/api/dashboard-view.ts) `buildSensors()` | card shows `"512 raw"`; healthy/stressed inferred from `plant_status` text matching |
-| [plant_status.ino](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/arduino/plant_doctor_pro/plant_status.ino) | thresholds `700` / `250` are placeholders, never calibrated |
+| [config.h](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/arduino/plant_doctor_pro/config.h) / [config.example.h](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/arduino/plant_doctor_pro/config.example.h) | new `MOISTURE_RAW_DRY` / `MOISTURE_RAW_WET` calibration points |
+| [sensor.ino](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/arduino/plant_doctor_pro/sensor.ino) | `moistureToPercent()` — linear map, clamped to 0-100, `-1` passes through; `#error` if DRY <= WET |
+| [datafiltering.ino](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/arduino/plant_doctor_pro/datafiltering.ino) | averages raw, then converts once → `filtered_moisture_pct` |
+| [plant_status.ino](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/arduino/plant_doctor_pro/plant_status.ino) | thresholds are now `MOISTURE_PCT_DRY 30` / `MOISTURE_PCT_WET 80`, with a `-1` guard |
+| [wifi_post.ino](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/arduino/plant_doctor_pro/wifi_post.ino) | POSTs `filtered_moisture_pct` |
+| [dashboard-view.ts](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/web/frontend/src/app/api/dashboard-view.ts) | moisture is back in `computeHealth()`; card renders `%` via `inRange()` |
 
-**Fix:**
-1.  Measure two reference points with the actual sensor: **dry** (in air) and **wet**
-    (submerged to the marked line) — record both raw values.
-2.  Map raw → % in the firmware (`0 %` = dry reading, `100 %` = wet reading; note that
-    for capacitive sensors *higher raw = drier*), and clamp to 0–100.
-3.  Replace the `700` / `250` placeholders in `calculatePlantStatus()` with percent
-    thresholds.
-4.  Set real `min_moisture` / `max_moisture` on the `plant_types` row.
-5.  Remove the two workarounds in `dashboard-view.ts`: add moisture back into
-    `computeHealth()` and switch the card to `inRange()` + `%` formatting.
+`plant_types.min_moisture` / `max_moisture` needed no change — all eight seeded species
+in [mock_data.sql](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/web/backend/database/mock_data.sql)
+were already in percent.
 
-> Decide whether the conversion lives in the firmware or the backend. Firmware is
-> simpler; the backend keeps the raw value recoverable. Whichever is chosen, only one
-> unit should ever reach `plant_data.moisture`.
+**Remaining (hardware in the loop):**
+1.  Read the two reference values off the Serial Monitor (`moisture(raw)=` line):
+    probe **dry in open air**, then **submerged to the marked line**.
+2.  Put them in `config.h` as `MOISTURE_RAW_DRY` / `MOISTURE_RAW_WET` and re-upload.
+    The committed defaults (620 / 300) are typical capacitive values, not measured ones.
+3.  Confirm the Serial Monitor prints a sane `Moisture: xx % (raw yyy)` and that a
+    watered pot moves the number the right way.
+4.  Convert the rows already stored in raw units — see
+    [migrations/2026-07-25_moisture_to_percent.sql](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/web/backend/database/migrations/2026-07-25_moisture_to_percent.sql)
+    (preview → update, or just delete the old test rows). Until this runs, the history
+    chart mixes both units.
+5.  Re-check `MOISTURE_PCT_DRY` / `MOISTURE_PCT_WET` against how the plant actually
+    behaves; 30/80 is a starting guess.
+
+> The firmware was never compiled here (no `arduino-cli` on this machine) — verify it
+> builds in the Arduino IDE before trusting the upload.
 
 ### 5.2 — `recorded_at` has no time zone — **P1 (quick)**
 

@@ -26,4 +26,24 @@
 // The backend rejects any POST that is missing device_id (HTTP 400).
 #define DEVICE_ID  "00000000-0000-0000-0000-000000000000"
 
+// ---- Soil moisture calibration ----
+// The sketch converts the raw ADC reading (0-1023) into a PERCENTAGE before
+// sending it, because the database (`plant_types.min_moisture` /
+// `max_moisture`) and the dashboard both work in percent.
+//
+// Measure YOUR sensor once — the values below are only typical numbers:
+//   1. Upload the sketch and open the Serial Monitor.
+//   2. Hold the probe in open air, dry and clean → note "Moisture:" (raw).
+//      That is MOISTURE_RAW_DRY.
+//   3. Submerge it in water up to the marked line (never past it) → note the
+//      raw value again. That is MOISTURE_RAW_WET.
+//   4. Put both numbers here and re-upload.
+//
+// Capacitive sensors read HIGHER when dry, so DRY must be greater than WET.
+// (If your probe is the resistive kind it behaves the opposite way and the
+// #error below will fire — swap the two readings and invert the formula in
+// moistureToPercent().)
+#define MOISTURE_RAW_DRY  620   // raw value in open air     →   0 %
+#define MOISTURE_RAW_WET  300   // raw value submerged       → 100 %
+
 #endif
