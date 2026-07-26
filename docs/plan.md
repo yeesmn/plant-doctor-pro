@@ -19,17 +19,22 @@ graph TD
 ## Current Status (2026-07-25)
 
 Phases 1–4 are **done**. The full path *Arduino → Express → Supabase* was verified over
-the LAN (see [test-lan-2026-07-01.md](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/docs/test-lan-2026-07-01.md)):
-readings land in `plant_data` every 5 minutes (10 samples × 30 s, averaged), and the
+the LAN on **2026-07-09** (see [test-lan-2026-07-01.md](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/docs/test-lan-2026-07-01.md)):
+readings landed in `plant_data` every 5 minutes (10 samples × 30 s, averaged), and the
 dashboard runs on live data (`VITE_USE_MOCK=false`).
+
+That single session is **all the data there is** — the device has not been powered since,
+so the newest reading is from 2026-07-09. Nothing is broken; the soak test (5.4) simply
+has not started.
 
 What remains is **Phase 5** below — data-quality and reliability problems that the
 happy-path test did not cover.
 
-> ⚠ **5.1 and 5.2 are written but not yet proven against the running system.** The
-> moisture-to-percent firmware has not been compiled or uploaded, and neither SQL
-> migration has been run. Both checklists are in
+> ⚠ **5.1 is written but unproven on hardware** — the moisture-to-percent firmware has
+> not been compiled or uploaded, and its calibration constants are still placeholders. The
+> checklist is in
 > [worklog-2026-07-25.md](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/docs/worklog-2026-07-25.md).
+> 5.2 is done.
 
 ---
 
@@ -109,7 +114,7 @@ within each tier.
 | # | Issue | Priority |
 |---|---|---|
 | [5.1](#51--soil-moisture-is-uncalibrated-blocks-health-scoring--p1-code-done--needs-measuring) | Soil moisture is uncalibrated | P1 — code done, needs measuring |
-| [5.2](#52--recorded_at-has-no-time-zone--p1-code-done--migration-not-run) | `recorded_at` has no time zone | P1 — code done, migration not run |
+| [5.2](#52--recorded_at-has-no-time-zone--p1-done-migration-run-2026-07-25) | `recorded_at` has no time zone | ✅ done |
 | [5.3](#53--service_role-key-sits-in-the-frontend-env--p2-quick) | `service_role` key sits in the frontend `.env` | P2 (quick) |
 | [5.4](#54--no-long-run-reliability-data--p2) | No long-run reliability data | P2 |
 | [5.5](#55--device-identity--pairing--p2) | Device identity & pairing | P2 |
@@ -145,17 +150,20 @@ were already in percent.
     The committed defaults (620 / 300) are typical capacitive values, not measured ones.
 3.  Confirm the Serial Monitor prints a sane `Moisture: xx % (raw yyy)` and that a
     watered pot moves the number the right way.
-4.  Convert the rows already stored in raw units — see
-    [migrations/2026-07-25_moisture_to_percent.sql](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/web/backend/database/migrations/2026-07-25_moisture_to_percent.sql)
-    (preview → update, or just delete the old test rows). Until this runs, the history
-    chart mixes both units.
+4.  Deal with the raw rows from the 2026-07-09 LAN test — see
+    [migrations/2026-07-25_moisture_to_percent.sql](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/web/backend/database/migrations/2026-07-25_moisture_to_percent.sql).
+    **The script is scoped to one `device_id` on purpose:** the demo rows seeded by
+    `mock_data.sql` are already in percent (62.0, 52.0, …), and a blanket "convert
+    everything before date X" would push them through the formula a second time and clamp
+    them to 100. Deleting the test rows is the cleaner option here — they predate the
+    calibration, so converting them is guesswork over data nobody needs.
 5.  Re-check `MOISTURE_PCT_DRY` / `MOISTURE_PCT_WET` against how the plant actually
     behaves; 30/80 is a starting guess.
 
 > The firmware was never compiled here (no `arduino-cli` on this machine) — verify it
 > builds in the Arduino IDE before trusting the upload.
 
-### 5.2 — `recorded_at` has no time zone — **P1, code done / migration not run**
+### 5.2 — `recorded_at` has no time zone — **P1, DONE (migration run 2026-07-25)**
 
 [schema.sql](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/web/backend/database/schema.sql)
 declared `recorded_at TIMESTAMP DEFAULT NOW()` — *without* time zone. Postgres stores
@@ -179,10 +187,9 @@ previous day and two points could carry the same label. Bucketing now matches la
 Once the column carries an offset, no client-side date maths is needed — `new Date()`
 parses it correctly on its own.
 
-**Remaining:**
-1.  Run the migration in the Supabase SQL editor. **Step 0 first** — it checks the server
-    really is on UTC, which the `USING ... AT TIME ZONE 'UTC'` clause assumes.
-2.  Reload the dashboard and confirm "last updated" reads minutes, not hours.
+**Done:** the migration ran on 2026-07-25 — `plant_data.recorded_at` now returns with a
+`+00` offset. Worth one more look at the dashboard the next time the device is sending, to
+confirm "last updated" tracks minutes rather than hours.
 
 ### 5.3 — `service_role` key sits in the frontend `.env` — **P2 (quick)**
 
