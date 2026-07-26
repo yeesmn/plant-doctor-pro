@@ -7,10 +7,10 @@ This document highlights the core technical skills, frameworks, and architecture
 ## 1. Firmware Engineering (C++ / Arduino)
 Building reliable IoT edge logic to gather physical metrics and sync them upstream.
 *   **WiFi Lifecycle Management**: Scanning local networks, managing connection states, and auto-reconnecting.
-    *   *Demonstrated in*: [wifi_connection.ino](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/arduino/wifi_connection.ino)
+    *   *Demonstrated in*: [wifi_post.ino](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/arduino/plant_doctor_pro/wifi_post.ino)
 *   **Sensor Polling & Data Handling**: Scheduling reads for Soil Moisture, Light, Temperature, and Tilt sensors.
 *   **HTTP/JSON Client Operations**: Building JSON payloads from sensor readings and transmitting them via REST requests to the backend server.
-    *   *Demonstrated in*: [plant_doctor_pro.ino](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/arduino/plant_doctor_pro.ino) (Main sketch shell)
+    *   *Demonstrated in*: [plant_doctor_pro.ino](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/arduino/plant_doctor_pro/plant_doctor_pro.ino) (Main sketch shell)
 
 ---
 
@@ -47,4 +47,4 @@ Building a responsive, aesthetic dashboard showing real-time metrics.
     *   *Radar Charts*: Multi-axial stress breakdown analysis. [care-suggestions.tsx](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/web/frontend/src/app/components/care-suggestions.tsx)
     *   *Multi-Line Composed Charts*: Showing historical trends with reference overlays. [history-chart.tsx](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/web/frontend/src/app/components/history-chart.tsx)
 *   **Dashboard API Clients**: Asynchronous data loading from local backend endpoints into React state hooks.
-    *   *Demonstrated in*: [dashboard.ts](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/web/frontend/src/app/api/dashboard.ts)
+    *   *Demonstrated in*: [fetch-data.ts](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/web/frontend/src/app/api/fetch-data.ts)
