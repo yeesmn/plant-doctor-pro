@@ -115,8 +115,8 @@ within each tier.
 |---|---|---|
 | [5.1](#51--soil-moisture-is-uncalibrated-blocks-health-scoring--p1-code-done--needs-measuring) | Soil moisture is uncalibrated | P1 — code done, needs measuring |
 | [5.2](#52--recorded_at-has-no-time-zone--p1-done-migration-run-2026-07-25) | `recorded_at` has no time zone | ✅ done |
-| [5.3](#53--service_role-key-sits-in-the-frontend-env--p2-quick) | `service_role` key sits in the frontend `.env` | P2 (quick) |
-| [5.4](#54--no-long-run-reliability-data--p2) | No long-run reliability data | P2 |
+| [5.3](#53--service_role-key-sits-in-the-frontend-env--done-2026-07-25) | `service_role` key sits in the frontend `.env` | ✅ done |
+| [5.4](#54--no-long-run-reliability-data--p2-scheduled) | No long-run reliability data | P2 — scheduled with the hardware team |
 | [5.5](#55--device-identity--pairing--p2) | Device identity & pairing | P2 |
 | [5.6](#56--dashboard-sections-still-on-mock-data--p3) | Dashboard sections still on mock data | P3 |
 | [5.7](#57--the-pipeline-depends-on-the-pc-being-awake--p3) | The pipeline depends on the PC being awake | P3 |
@@ -191,16 +191,29 @@ parses it correctly on its own.
 `+00` offset. Worth one more look at the dashboard the next time the device is sending, to
 confirm "last updated" tracks minutes rather than hours.
 
-### 5.3 — `service_role` key sits in the frontend `.env` — **P2 (quick)**
+### 5.3 — `service_role` key sits in the frontend `.env` — **DONE 2026-07-25**
 
-`web/frontend/.env` contains `SUPABASE_KEY` (the **service role** secret) alongside the
-`VITE_*` values. Vite only bundles `VITE_`-prefixed variables, so it is not leaking
-today — but the key has no reason to be in a client project, and it is already present in
-`web/backend/.env`. **Delete it from the frontend file.**
+`web/frontend/.env` carried `SUPABASE_KEY` (the **service role** secret) alongside the
+`VITE_*` values. Vite only bundles `VITE_`-prefixed variables, so it never reached the
+browser — but a secret with no reason to be in a client project is one rename away from
+shipping.
 
-### 5.4 — No long-run reliability data — **P2**
+**Done:**
+- Removed `SUPABASE_URL` / `SUPABASE_KEY` from `web/frontend/.env`; it now holds only
+  `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY` and `VITE_USE_MOCK`. The backend
+  copy in `web/backend/.env` is untouched and is the only place the secret lives.
+- Added committed `.env.example` templates for
+  [frontend](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/web/frontend/.env.example)
+  and [backend](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/web/backend/.env.example),
+  each stating which side the key belongs on.
+- Verified: `git log --all -- "*.env"` is empty, so **no `.env` was ever committed** and the
+  key was never exposed through the repository — no rotation needed. The rebuilt bundle
+  contains the publishable key and zero occurrences of the service-role JWT.
 
-A few successful cycles is not the same as a stable pipeline. Run a **24–48 h soak test**
+### 5.4 — No long-run reliability data — **P2, scheduled**
+
+Planned as a 24 h run with the hardware team. A few successful cycles is not the same as
+a stable pipeline — count rows against the expected rate. Run a **24–48 h soak test**
 and count rows: 5-minute intervals should produce **288 rows/day** per device. The gap
 between that and reality is the drop rate.
 
