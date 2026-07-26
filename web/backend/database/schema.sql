@@ -8,7 +8,7 @@ CREATE TABLE profiles (
     id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
 
     display_name TEXT,
-    created_at TIMESTAMP DEFAULT NOW()
+    created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE TABLE plant_types (
@@ -30,7 +30,7 @@ CREATE TABLE plant_types (
 
     description TEXT,
 
-    created_at TIMESTAMP DEFAULT NOW(),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
 
     CHECK (min_temp IS NULL OR max_temp IS NULL OR min_temp <= max_temp),
     CHECK (min_humidity IS NULL OR max_humidity IS NULL OR min_humidity <= max_humidity),
@@ -48,7 +48,7 @@ CREATE TABLE devices (
 
     plant_name TEXT NOT NULL,
 
-    created_at TIMESTAMP DEFAULT NOW(),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
 
     UNIQUE(user_id, plant_name)
 );
@@ -66,7 +66,7 @@ CREATE TABLE plant_data (
     pitch NUMERIC,
     plant_status TEXT,
 
-    recorded_at TIMESTAMP DEFAULT NOW()
+    recorded_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE TABLE care_suggestions (
@@ -75,5 +75,5 @@ CREATE TABLE care_suggestions (
     device_id UUID NOT NULL REFERENCES devices(id) ON DELETE CASCADE,
 
     suggestion TEXT,
-    created_at TIMESTAMP DEFAULT NOW()
+    created_at TIMESTAMPTZ DEFAULT NOW()
 );

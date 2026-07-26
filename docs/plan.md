@@ -26,8 +26,9 @@ dashboard runs on live data (`VITE_USE_MOCK=false`).
 What remains is **Phase 5** below — data-quality and reliability problems that the
 happy-path test did not cover.
 
-> ⚠ **5.1 is written but unproven on hardware.** The moisture-to-percent firmware has not
-> been compiled or uploaded yet. The checklist to work through is in
+> ⚠ **5.1 and 5.2 are written but not yet proven against the running system.** The
+> moisture-to-percent firmware has not been compiled or uploaded, and neither SQL
+> migration has been run. Both checklists are in
 > [worklog-2026-07-25.md](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/docs/worklog-2026-07-25.md).
 
 ---
@@ -108,7 +109,7 @@ within each tier.
 | # | Issue | Priority |
 |---|---|---|
 | [5.1](#51--soil-moisture-is-uncalibrated-blocks-health-scoring--p1-code-done--needs-measuring) | Soil moisture is uncalibrated | P1 — code done, needs measuring |
-| [5.2](#52--recorded_at-has-no-time-zone--p1-quick) | `recorded_at` has no time zone | P1 (quick) |
+| [5.2](#52--recorded_at-has-no-time-zone--p1-code-done--migration-not-run) | `recorded_at` has no time zone | P1 — code done, migration not run |
 | [5.3](#53--service_role-key-sits-in-the-frontend-env--p2-quick) | `service_role` key sits in the frontend `.env` | P2 (quick) |
 | [5.4](#54--no-long-run-reliability-data--p2) | No long-run reliability data | P2 |
 | [5.5](#55--device-identity--pairing--p2) | Device identity & pairing | P2 |
@@ -154,21 +155,34 @@ were already in percent.
 > The firmware was never compiled here (no `arduino-cli` on this machine) — verify it
 > builds in the Arduino IDE before trusting the upload.
 
-### 5.2 — `recorded_at` has no time zone — **P1 (quick)**
+### 5.2 — `recorded_at` has no time zone — **P1, code done / migration not run**
 
 [schema.sql](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/web/backend/database/schema.sql)
-declares `recorded_at TIMESTAMP DEFAULT NOW()` — *without* time zone. Postgres stores
-UTC, PostgREST returns it with no offset (`2026-07-25T01:00:00`), and JavaScript's
-`new Date()` parses an offset-less ISO string as **local time**. In KST that shifts every
-reading by 9 hours.
+declared `recorded_at TIMESTAMP DEFAULT NOW()` — *without* time zone. Postgres stores
+UTC, PostgREST returned it with no offset (`2026-07-25T01:00:00`), and JavaScript's
+`new Date()` parses an offset-less ISO string as **local time**. In KST that shifted every
+reading by 9 hours: "last updated 9 hr ago" for a row that had just landed, and
+`fetchReadings()`'s `.gte("recorded_at", since)` window off by the same amount.
 
-**Symptoms to check first:** the hero's "last updated" showing `9 hr ago` for a reading
-that just arrived, and history-chart day buckets breaking at the wrong hour
-(`buildHistory()` buckets on `recorded_at.slice(0, 10)`).
+**Code changes (done):**
 
-**Fix:** migrate the column to `TIMESTAMPTZ` (and `care_suggestions.created_at`,
-`devices.created_at`, `plant_types.created_at`, `profiles.created_at` for consistency),
-then confirm the dashboard's relative times.
+| File | Change |
+|---|---|
+| [schema.sql](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/web/backend/database/schema.sql) | all five `TIMESTAMP DEFAULT NOW()` columns are now `TIMESTAMPTZ` |
+| [migrations/2026-07-25_timestamptz.sql](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/web/backend/database/migrations/2026-07-25_timestamptz.sql) | converts the existing columns, reinterpreting stored values as UTC |
+| [dashboard-view.ts](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/web/frontend/src/app/api/dashboard-view.ts) | `buildHistory()` groups by `localDayKey()` instead of slicing the ISO string |
+
+That last one is a second, independent bug: the chart bucketed by the **UTC** day while
+`shortDate()` labelled in **local** time, so an evening KST reading was filed under the
+previous day and two points could carry the same label. Bucketing now matches labelling.
+
+Once the column carries an offset, no client-side date maths is needed — `new Date()`
+parses it correctly on its own.
+
+**Remaining:**
+1.  Run the migration in the Supabase SQL editor. **Step 0 first** — it checks the server
+    really is on UTC, which the `USING ... AT TIME ZONE 'UTC'` clause assumes.
+2.  Reload the dashboard and confirm "last updated" reads minutes, not hours.
 
 ### 5.3 — `service_role` key sits in the frontend `.env` — **P2 (quick)**
 

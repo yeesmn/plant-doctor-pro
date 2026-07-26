@@ -72,6 +72,17 @@ function shortDate(iso: string): string {
   return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
+// The calendar day a reading belongs to *in the viewer's time zone*.
+// Slicing the ISO string instead would group by the UTC day while shortDate()
+// labels in local time, so an evening reading in KST would be filed under the
+// previous day and two chart points could end up carrying the same label.
+function localDayKey(iso: string): string {
+  const d = new Date(iso);
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${d.getFullYear()}-${month}-${day}`;
+}
+
 // Health score averaged over every factor we have a range for: moisture,
 // temperature, humidity, light, and tilt. Factors with no reading (-1/null)
 // or no configured range drop out instead of counting as zero.
@@ -151,12 +162,12 @@ function buildSensors(latest: PlantReading, readings: PlantReading[], pt: PlantT
   ];
 }
 
-// Average readings per calendar day → one chart point per day.
+// Average readings per local calendar day → one chart point per day.
 function buildHistory(readings: PlantReading[]): HistoryPoint[] {
   const byDay = new Map<string, { m: number[]; t: number[]; iso: string }>();
 
   for (const r of readings) {
-    const key = r.recorded_at.slice(0, 10); // YYYY-MM-DD
+    const key = localDayKey(r.recorded_at);
     if (!byDay.has(key)) byDay.set(key, { m: [], t: [], iso: r.recorded_at });
     const bucket = byDay.get(key)!;
     const m = clean(r.moisture);
