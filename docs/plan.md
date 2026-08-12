@@ -113,6 +113,7 @@ within each tier.
 
 | # | Issue | Priority |
 |---|---|---|
+| [5.8](#58--backend-deployment-readiness--p1-in-progress) | Backend deployment readiness | **P1 — in progress** |
 | [5.1](#51--soil-moisture-is-uncalibrated-blocks-health-scoring--p1-code-done--needs-measuring) | Soil moisture is uncalibrated | P1 — code done, needs measuring |
 | [5.2](#52--recorded_at-has-no-time-zone--p1-done-migration-run-2026-07-25) | `recorded_at` has no time zone | ✅ done |
 | [5.3](#53--service_role-key-sits-in-the-frontend-env--done-2026-07-25) | `service_role` key sits in the frontend `.env` | ✅ done |
@@ -305,3 +306,83 @@ is off, asleep, or on another network. Two options:
 
 Either way, **device authentication (5.5) must land first** — the endpoint currently
 accepts any reading for any known device UUID.
+
+
+### 5.8 — Backend deployment readiness — **P1, in progress**
+
+Deploying the Express backend was requested on 2026-08-11 (this is 5.7 option A). An audit
+of what has to change first, worked **one step at a time, each reviewed before the next**.
+
+Progress:
+
+| Step | Scope | State |
+|---|---|---|
+| 1 | Make it start on a host — `PORT`, `start` script, Node version | ☐ |
+| 2 | Delete the unused read/write routes | ☐ |
+| 3 | Lock down what remains — device secret, CORS, error bodies, rate limit | ☐ |
+| 4 | Correctness — `.maybeSingle()`, input validation, fail-fast env, error/404 handlers, health check | ☐ |
+| 5 | Housekeeping + deploy config | ☐ |
+
+#### Step 1 — the service will not boot without these
+
+- **`PORT` is hardcoded** to 3000 in
+  [server.js](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/web/backend/js/server.js).
+  Every host injects its own `PORT`; ignoring it means the health check never passes and
+  the deploy is killed. (The comment above the line already says "Read PORT which default
+  to 3000" — only the implementation is missing.)
+- **No `start` script.** `npm run server` uses `nodemon`, a devDependency that a production
+  install omits.
+- **`main` points at `server.js`** but the file is `js/server.js`, and no `engines.node` is
+  declared.
+
+#### Step 2 — delete the routes nobody uses
+
+The frontend reads Supabase directly
+([fetch-data.ts](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/web/frontend/src/app/api/fetch-data.ts)),
+so the only endpoint with a real caller is `POST /api/sensor-data`. Everything else in
+[sensor.js](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/web/backend/database/sensor.js)
+is an unauthenticated hole, and the backend's service-role key bypasses RLS:
+
+| Route | Exposure |
+|---|---|
+| `GET /api/sensor-data` | every reading of every user |
+| `GET /api/sensor-data/:id` | any single reading |
+| `GET /api/sensor-data/device/:device_id` | any device's full history |
+| `PUT /api/sensor-data/:id` | anyone can rewrite any row |
+| `DELETE /api/sensor-data/:id` | anyone can delete any row |
+
+Deleting them removes most of the attack surface for free.
+
+#### Step 3 — lock down what remains
+
+- `POST` accepts any known `device_id` with no proof of identity (5.5). Short of the full
+  pairing flow, an `X-Device-Secret` header checked against an environment variable is
+  enough to close it.
+- `app.use(cors())` allows every origin — its own comment says "fine for dev/study".
+- Every failure returns `error.message` straight from PostgREST, leaking schema details.
+- No rate limit: an open POST endpoint can be used to fill the Supabase free tier.
+
+#### Step 4 — correctness
+
+- **The 404 path is dead code.** `.single()` errors when no row matches, so an unknown
+  `device_id` returns **500**, not the 404 the
+  [LAN test cheatsheet](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/docs/test-lan-2026-07-01.md)
+  documents. `.maybeSingle()` fixes it.
+- No input validation — `moisture: "abc"` becomes a 500. Now that moisture is a percentage,
+  0–100 (plus the `-1` sentinel) is a checkable contract.
+- `supabase.js` calls `createClient(undefined, undefined)` when the env vars are missing;
+  it should fail at boot with a clear message.
+- No global error handler, no 404 handler, no health endpoint (`GET /` is a 404).
+- No SIGTERM handling, so in-flight requests are cut on redeploy.
+
+#### Step 5 — housekeeping and deploy config
+
+- `uuid` is a dependency but is never imported.
+- `morgan('dev')` → `combined` for production logs.
+- Host settings: root directory `web/backend`, build `npm ci`, start `npm start`, env vars
+  set in the dashboard (never a committed `.env`).
+- **Host choice hinges on TLS.** The sketch uses a plain `WiFiClient`, and PaaS hosts
+  redirect HTTP→HTTPS, which `ArduinoHttpClient` does not follow. Either switch the
+  firmware to `WiFiSSLClient` on port 443 (a three-line change; Render's free tier then
+  works) or pick a host that allows plain HTTP (Fly.io with `force_https = false`).
+- After deploying: repoint `SERVER_IP` / `SERVER_PORT` in `config.h`.
