@@ -2,12 +2,16 @@
   "name": "web",
   "version": "1.0.0",
   "description": "",
-  "main": "server.js",
+  "main": "js/server.js",
   "scripts": {
     "dev": "vite --host",
     "build": "vite build",
+    "start": "node js/server.js",
     "server": "nodemon js/server.js",
     "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "engines": {
+    "node": ">=20.0.0"
   },
   "keywords": [],
   "author": "",

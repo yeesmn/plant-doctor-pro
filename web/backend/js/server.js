@@ -24,10 +24,13 @@ app.use(express.json())
 // Mount it under /api — so routes become /api/sensor-data etc.
 app.use('/api', sensorRoutes)
 
-// Read PORT which default to 3000
-const PORT = 3000
+// Read PORT which default to 3000.
+// Hosting platforms (Render, Fly, Railway…) assign the port and pass it in as
+// an env var — a hardcoded 3000 means the health check never connects and the
+// deploy gets killed. 3000 stays as the local fallback.
+const PORT = process.env.PORT || 3000
 
 // Start the server
 app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`)
+  console.log(`Server listening on port ${PORT}`)
 })
