@@ -63,8 +63,9 @@ Configure and start the middleware API.
     ```
 4.  Verify that the server launches successfully on `http://localhost:3000` and displays:
     `Server running on http://localhost:3000`
-5.  *(Optional)* Test the REST endpoint using curl, Postman, or a browser:
-    `GET http://localhost:3000/api/sensor-data`
+5.  *(Optional)* Smoke-test the endpoint with curl. The API is **write-only** — the read
+    routes were removed in 5.8 step 2, so use a POST (see the command in
+    [test-lan-2026-07-01.md](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/docs/test-lan-2026-07-01.md)).
 
 ### Phase 3: Firmware & Arduino Sensor Integration
 Complete the micro-controller logic to connect to WiFi and transmit actual metrics.
@@ -317,8 +318,8 @@ Progress:
 
 | Step | Scope | State |
 |---|---|---|
-| 1 | Make it start on a host — `PORT`, `start` script, Node version | ☐ |
-| 2 | Delete the unused read/write routes | ☐ |
+| 1 | Make it start on a host — `PORT`, `start` script, Node version | ✅ `029ac8a` |
+| 2 | Delete the unused read/write routes | ✅ |
 | 3 | Lock down what remains — device secret, CORS, error bodies, rate limit | ☐ |
 | 4 | Correctness — `.maybeSingle()`, input validation, fail-fast env, error/404 handlers, health check | ☐ |
 | 5 | Housekeeping + deploy config | ☐ |
@@ -352,6 +353,11 @@ is an unauthenticated hole, and the backend's service-role key bypasses RLS:
 | `DELETE /api/sensor-data/:id` | anyone can delete any row |
 
 Deleting them removes most of the attack surface for free.
+
+**Done.** `sensor.js` is now `POST /api/sensor-data` and nothing else, with a header comment
+explaining why the rest are gone so they are not casually restored. Verified: GET / PUT /
+DELETE on `/api/sensor-data` and `GET /api/sensor-data/device/:id` all return 404, while a
+POST with no body still returns its 400.
 
 #### Step 3 — lock down what remains
 
