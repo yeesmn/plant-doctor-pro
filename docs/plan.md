@@ -321,7 +321,7 @@ Progress:
 | 1 | Make it start on a host — `PORT`, `start` script, Node version | ✅ `029ac8a` |
 | 2 | Delete the unused read/write routes | ✅ |
 | 3 | Lock down what remains — device secret, CORS, error bodies, rate limit | ✅ |
-| 4 | Correctness — `.maybeSingle()`, input validation, fail-fast env, error/404 handlers, health check | ☐ |
+| 4 | Correctness — `.maybeSingle()`, input validation, fail-fast env, error/404 handlers, health check | ✅ |
 | 5 | Housekeeping + deploy config | ☐ |
 
 #### Step 1 — the service will not boot without these
@@ -405,6 +405,27 @@ Per-device secrets need the pairing flow.
   it should fail at boot with a clear message.
 - No global error handler, no 404 handler, no health endpoint (`GET /` is a 404).
 - No SIGTERM handling, so in-flight requests are cut on redeploy.
+
+**Done.**
+
+| Change | Detail |
+|---|---|
+| `.maybeSingle()` | an unknown `device_id` now answers **404**, matching what the LAN cheatsheet always claimed. Verified against the live database |
+| `validateReading()` | UUID shape, numeric types, and per-field ranges, all as 400s instead of Postgres 500s. **Moisture and humidity are validated as percent (0–100)**, so a raw ADC reading like `318.4` is rejected rather than stored in the wrong unit — the firmware must be calibrated and uploaded before the device posts again |
+| `supabase.js` | exits at boot with the missing variable names instead of building a client from `undefined` |
+| `GET /health` | mounted before the `/api` middleware, so no secret and no rate limit; reports uptime without touching the DB |
+| 404 + error handlers | every response is JSON now, including unknown paths and unexpected throws. Express 5 routes async rejections to the error handler |
+| SIGTERM / SIGINT | stop accepting connections, let in-flight requests finish, exit — with a 10 s cap so a stuck request cannot block a deploy |
+| boot warning | logs immediately if `DEVICE_SECRET` is unset, rather than waiting for the first refused POST |
+
+Verified: `/health` 200, unknown path `{"error":"Not found"}`, six malformed bodies each
+rejected with a specific 400, a valid body reaching the DB and answering 404 for an unknown
+device, and a missing `SUPABASE_URL` exiting 1 with a readable message. Signal handling was
+not exercised locally — Windows has no real SIGTERM, so that path only runs on the host.
+
+**Known wart, not fixed here:** `-1` doubles as the failed-read sentinel *and* a legal
+temperature. Indoors it will not collide, but the honest fix is `null` from the firmware
+rather than a magic number.
 
 #### Step 5 — housekeeping and deploy config
 

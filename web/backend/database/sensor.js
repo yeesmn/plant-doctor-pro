@@ -20,23 +20,84 @@ import { supabase } from '../js/supabase.js'
 
 const router = express.Router()
 
+// ─── Input validation ────────────────────────────────────────────────
+// Without this, a malformed body becomes a 500: a non-UUID device_id trips
+// Postgres error 22P02, and moisture: "abc" fails at insert time. Both are
+// the client's fault and should say so with a 400.
+//
+// The ranges also pin down the contract the firmware is expected to honour.
+// Note MOISTURE and HUMIDITY are PERCENT — the firmware converts raw ADC
+// values before sending (see moistureToPercent() in sensor.ino). A raw
+// reading like 318 is now rejected on purpose rather than stored in the
+// wrong unit.
+// ─────────────────────────────────────────────────────────────────────
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+// -1 is the firmware's "this sensor failed" sentinel and is always allowed.
+const FAILED_READ = -1
+
+const RANGES = {
+  moisture:    [0, 100],        // percent
+  humidity:    [0, 100],        // percent
+  light:       [0, 100000],     // lux
+  temperature: [-40, 85],       // SHT31's own operating range
+  roll:        [-180, 180],
+  pitch:       [-180, 180],
+}
+
+// Returns an error message, or null when the body is acceptable.
+function validateReading(body) {
+  const { device_id, plant_status } = body
+
+  if (!device_id) return 'device_id is required'
+  if (typeof device_id !== 'string' || !UUID_RE.test(device_id)) {
+    return 'device_id must be a UUID'
+  }
+
+  for (const [field, [min, max]] of Object.entries(RANGES)) {
+    const value = body[field]
+
+    // Every measurement is optional — a device without a light sensor simply
+    // omits it. Only reject values that are present and wrong.
+    if (value === undefined || value === null) continue
+
+    if (typeof value !== 'number' || !Number.isFinite(value)) {
+      return `${field} must be a number`
+    }
+
+    if (value !== FAILED_READ && (value < min || value > max)) {
+      return `${field} must be between ${min} and ${max} (or ${FAILED_READ} for a failed read)`
+    }
+  }
+
+  if (plant_status !== undefined && plant_status !== null) {
+    if (typeof plant_status !== 'string') return 'plant_status must be a string'
+    if (plant_status.length > 64) return 'plant_status must be 64 characters or fewer'
+  }
+
+  return null
+}
+
 // ─── POST /api/sensor-data ───────────────────────────────────────────
 // The Arduino calls this to SAVE a new sensor reading.
 router.post('/sensor-data', async (req, res) => {
 
-  const { device_id, moisture, light, temperature, humidity, roll, pitch, plant_status } = req.body
-
-  // device_id is required — it links the reading to a plant
-  if (!device_id) {
-    return res.status(400).json({ error: 'device_id is required' })
+  const validationError = validateReading(req.body ?? {})
+  if (validationError) {
+    return res.status(400).json({ error: validationError })
   }
 
-  // Verify the device exists before inserting
+  const { device_id, moisture, light, temperature, humidity, roll, pitch, plant_status } = req.body
+
+  // Verify the device exists before inserting.
+  // maybeSingle(), not single(): single() treats "no rows" as an error, which
+  // made the 404 below unreachable — an unknown device_id answered 500.
   const { data: device, error: deviceError } = await supabase
     .from('devices')
     .select('id')
     .eq('id', device_id)
-    .single()
+    .maybeSingle()
 
   // Log the real reason server-side; tell the client nothing about the schema.
   // PostgREST messages name tables, columns and constraints.

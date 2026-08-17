@@ -29,9 +29,30 @@ app.use(morgan('dev'))
 // Parse incoming JSON bodies — needed to read req.body
 app.use(express.json())
 
+// Health check — deliberately BEFORE the /api middleware so it needs no secret
+// and is not rate limited. Hosting platforms poll this to decide whether the
+// instance is alive, and it answers "is the server up?" without touching the DB.
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', uptime: Math.round(process.uptime()) })
+})
+
 // Mount it under /api — so routes become /api/sensor-data etc.
 // Every /api call is rate limited and must carry the device secret.
 app.use('/api', rateLimit, requireDeviceSecret, sensorRoutes)
+
+// Anything else: JSON, not Express's HTML error page. The Arduino parses the
+// body, so every response from this server should be JSON.
+app.use((req, res) => {
+  res.status(404).json({ error: 'Not found' })
+})
+
+// Last-resort error handler. Express 5 forwards rejected promises from async
+// handlers here; without it an unexpected throw would answer with an HTML stack
+// trace. Log the detail, tell the client nothing.
+app.use((err, req, res, next) => {
+  console.error('Unhandled error:', err)
+  res.status(500).json({ error: 'Internal server error' })
+})
 
 // Read PORT which default to 3000.
 // Hosting platforms (Render, Fly, Railway…) assign the port and pass it in as
@@ -40,6 +61,34 @@ app.use('/api', rateLimit, requireDeviceSecret, sensorRoutes)
 const PORT = process.env.PORT || 3000
 
 // Start the server
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`Server listening on port ${PORT}`)
+
+  // Writes fail closed without this, so say so at boot rather than letting the
+  // first POST of the day be the thing that discovers it.
+  if (!process.env.DEVICE_SECRET) {
+    console.warn('DEVICE_SECRET is not set — every write will be refused with 503')
+  }
 })
+
+// Graceful shutdown. Hosting platforms send SIGTERM before replacing an
+// instance; without a handler the process dies immediately and any in-flight
+// insert is cut off mid-request. Stop accepting connections, let the current
+// ones finish, then exit — with a hard cap so a stuck request cannot block the
+// deploy forever.
+for (const signal of ['SIGTERM', 'SIGINT']) {
+  process.on(signal, () => {
+    console.log(`${signal} received — closing server`)
+
+    const forceExit = setTimeout(() => {
+      console.error('Shutdown timed out — exiting anyway')
+      process.exit(1)
+    }, 10_000)
+
+    server.close(() => {
+      clearTimeout(forceExit)
+      console.log('Closed cleanly')
+      process.exit(0)
+    })
+  })
+}
