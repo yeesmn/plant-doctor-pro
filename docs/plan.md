@@ -263,22 +263,43 @@ switch devices. `fetchNewestDevice()` needs a `fetchDevices()` sibling plus a se
 
 #### Fix
 
-1.  Extend the schema with hardware identity:
+1.  Extend `devices` with the parts that are safe for the browser to read:
     ```sql
     ALTER TABLE devices
       ADD COLUMN mac_address      TEXT UNIQUE,   -- hardware identity
-      ADD COLUMN device_secret    TEXT,          -- store a hash, not the raw value
       ADD COLUMN last_seen_at     TIMESTAMPTZ,
       ADD COLUMN board_model      TEXT,
       ADD COLUMN firmware_version TEXT;
     ```
-2.  Have the firmware send `WiFi.macAddress()` in the POST body and a secret in an
-    `X-Device-Secret` header; the backend rejects the insert unless both match the
-    `devices` row for that `device_id`.
-3.  Touch `last_seen_at = now()` on every successful insert → online/offline badge, and
-    real data for `DeviceFooter` (5.6).
-4.  Add a device selector to the dashboard once more than one device exists.
-5.  **Eventually, a pairing flow:** the web app issues a short code for a new device, the
+2.  Put the credential in its **own table**, never a column on `devices`:
+    ```sql
+    CREATE TABLE device_credentials (
+        device_id    UUID PRIMARY KEY REFERENCES devices(id) ON DELETE CASCADE,
+        secret_hash  TEXT NOT NULL,      -- SHA-256 of a high-entropy token
+        created_at   TIMESTAMPTZ DEFAULT NOW(),
+        last_used_at TIMESTAMPTZ
+    );
+
+    ALTER TABLE device_credentials ENABLE ROW LEVEL SECURITY;
+    -- Deliberately NO policies: RLS denies by default, so authenticated users
+    -- can read nothing. Only the backend's service-role key, which bypasses
+    -- RLS, can read it.
+    ```
+    **Why not a column on `devices`:** the dashboard fetches
+    `.select("*, plant_types(*)")`, and the SELECT policy filters *rows*, not columns — a
+    `device_secret` column would be shipped straight to the browser. A separate table with
+    no policies is safe even if someone writes `select("*")` again later. Store a hash;
+    for a 192-bit random token SHA-256 is enough, since there is nothing to brute-force
+    (bcrypt/argon2 exist for low-entropy human passwords).
+3.  Have the firmware send `WiFi.macAddress()` in the POST body and its secret in the
+    `X-Device-Secret` header; the backend rejects the insert unless the hash matches the
+    `device_credentials` row for that `device_id`. **This is what upgrades 5.8's stopgap:**
+    one shared secret proves "a device of ours", so a holder can post under any
+    `device_id`; a per-device secret binds the credential to the row it may write.
+4.  Touch `last_seen_at = now()` (and `device_credentials.last_used_at`) on every
+    successful insert → online/offline badge, and real data for `DeviceFooter` (5.6).
+5.  Add a device selector to the dashboard once more than one device exists.
+6.  **Eventually, a pairing flow:** the web app issues a short code for a new device, the
     Arduino registers itself with that code and receives its `device_id`. This removes the
     hardcoded UUID entirely — swapping boards would no longer require reflashing.
 
@@ -305,8 +326,14 @@ is off, asleep, or on another network. Two options:
   middleware. Fewer moving parts, but the device then holds a Supabase key and the
   server-side validation is lost.
 
-Either way, **device authentication (5.5) must land first** — the endpoint currently
-accepts any reading for any known device UUID.
+**Option A is in progress** — see 5.8 and
+[deploy.md](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/docs/deploy.md). The endpoint
+is no longer open: 5.8 step 3 added a shared device secret, which is the minimum that had to
+land before exposing it. Full per-device identity is still 5.5.
+
+Option B's trade-off got worse on inspection: posting straight to Supabase would put a
+Supabase key on the device instead of a scoped secret, and lose the input validation added in
+5.8 step 4.
 
 
 ### 5.8 — Backend deployment readiness — **P1, in progress**
@@ -322,7 +349,7 @@ Progress:
 | 2 | Delete the unused read/write routes | ✅ |
 | 3 | Lock down what remains — device secret, CORS, error bodies, rate limit | ✅ |
 | 4 | Correctness — `.maybeSingle()`, input validation, fail-fast env, error/404 handlers, health check | ✅ |
-| 5 | Housekeeping + deploy config | ☐ |
+| 5 | Housekeeping + deploy config | ✅ |
 
 #### Step 1 — the service will not boot without these
 
@@ -438,3 +465,19 @@ rather than a magic number.
   firmware to `WiFiSSLClient` on port 443 (a three-line change; Render's free tier then
   works) or pick a host that allows plain HTTP (Fly.io with `force_https = false`).
 - After deploying: repoint `SERVER_IP` / `SERVER_PORT` in `config.h`.
+
+**Done.** Full instructions now live in
+[deploy.md](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/docs/deploy.md).
+
+| Change | Detail |
+|---|---|
+| Dependencies | dropped `uuid` (never imported), `cors` (middleware removed in step 3) and `vite` — the backend `package.json` had inherited the frontend's `dev`/`build` scripts and its Vite dev dependency. `npm ci --omit=dev` now installs five packages |
+| Logging | `morgan('dev')` locally, `'combined'` when `NODE_ENV=production` — ANSI colour codes are noise in a platform log viewer |
+| [render.yaml](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/render.yaml) | Blueprint: `rootDir: web/backend`, `npm ci --omit=dev`, `npm start`, health check `/health`, the three secrets marked `sync: false` so they are prompted for and never committed |
+| Firmware | `SERVER_IP` → `SERVER_HOST` plus a `USE_TLS` switch: `0` keeps the LAN setup byte-for-byte, `1` swaps `WiFiClient` for `WiFiSSLClient` on port 443. Serial now prints the full target URL |
+
+**The host decision changed during this work.** Fly.io with plain HTTP was originally on the
+table as "deploy without touching the firmware". Step 3 put `DEVICE_SECRET` in a header, and
+plain HTTP means that header is readable by anything on the path — so TLS is now required and
+Render's free tier is the recommendation. The `USE_TLS` toggle keeps local LAN debugging
+available rather than trading one setup for the other.

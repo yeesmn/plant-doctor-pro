@@ -18,8 +18,10 @@ app.set('trust proxy', 1)
 // Apply helmet (security headers)
 app.use(helmet())
 
-// Apply morgan in 'dev' mode — colorful, concise logs for development
-app.use(morgan('dev'))
+// Request logging. 'dev' is colourful and short for a local terminal; hosted
+// logs want the full combined format (method, path, status, size, user agent),
+// and its ANSI colour codes are noise in a platform log viewer.
+app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'))
 
 // No CORS middleware on purpose: the only client is the Arduino, which is not a
 // browser and so is not subject to CORS at all. The dashboard talks to Supabase

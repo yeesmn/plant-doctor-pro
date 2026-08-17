@@ -1,0 +1,39 @@
+# Render Blueprint — https://render.com/docs/infrastructure-as-code
+#
+# Deploys the Express API gateway in web/backend. To use it: Render dashboard →
+# New → Blueprint → pick this repository. Render reads this file, then prompts
+# for the two secrets marked sync:false below.
+#
+# Everything else about the deployment lives in docs/deploy.md.
+
+services:
+  - type: web
+    name: plant-doctor-pro-backend
+    runtime: node
+    plan: free
+
+    # The repo holds firmware, frontend and backend; only this subtree is the service.
+    rootDir: web/backend
+
+    # ci, not install: build from package-lock.json exactly, and skip
+    # devDependencies (nodemon is not wanted in production).
+    buildCommand: npm ci --omit=dev
+    startCommand: npm start
+
+    # Answers without a secret, without a rate limit, and without touching the
+    # database — exactly what a liveness probe should do.
+    healthCheckPath: /health
+
+    envVars:
+      - key: NODE_ENV
+        value: production
+
+      # sync:false = Render asks for the value and stores it encrypted; it is
+      # never written into this file. SUPABASE_KEY is the service-role secret,
+      # and DEVICE_SECRET must match config.h on the Arduino.
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_KEY
+        sync: false
+      - key: DEVICE_SECRET
+        sync: false

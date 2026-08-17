@@ -5,6 +5,7 @@ All project-level documentation for **Plant Doctor Pro** lives in this folder.
 | Document | What it covers |
 |---|---|
 | [plan.md](plan.md) | The implementation roadmap. Phases 1–4 are done; **Phase 5 holds the currently open issues.** |
+| [deploy.md](deploy.md) | How to deploy the backend to Render, verify it with curl, and repoint the Arduino at it (including the TLS switch). |
 | [skills.md](skills.md) | Map of the technical skills / architecture the repository demonstrates. |
 | [test-lan-2026-07-01.md](test-lan-2026-07-01.md) | LAN test plan for the Arduino → backend → Supabase path, with a status-code cheatsheet. |
 | [worklog-2026-07-25.md](worklog-2026-07-25.md) | Work log: docs consolidation, Phase 5 backlog, moisture → percent — **includes the hardware checks still pending on the Arduino.** |

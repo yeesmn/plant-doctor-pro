@@ -15,10 +15,30 @@
 #define WIFI_PASS  "YOUR_WIFI_PASSWORD"
 
 // ---- Backend server ----
-// Use the LAN IP of the computer running the Express server — NOT
-// "localhost" (the Arduino is a separate device on the network).
-// Find it with `ipconfig` (Windows) / `ifconfig` (Mac/Linux). e.g. 192.168.0.25
-#define SERVER_IP   "192.168.0.25"
+// Two setups, switched with USE_TLS:
+//
+//   Local LAN (USE_TLS 0)
+//     SERVER_HOST = the LAN IP of the computer running Express — NOT
+//     "localhost", since the Arduino is a separate device. Find it with
+//     `ipconfig` (Windows) / `ifconfig` (Mac/Linux).
+//     SERVER_PORT = 3000
+//
+//   Deployed (USE_TLS 1)
+//     SERVER_HOST = the host name only, no scheme and no trailing slash,
+//     e.g. "plant-doctor-pro.onrender.com"
+//     SERVER_PORT = 443
+//
+// Use TLS for anything off your own network. The POST carries DEVICE_SECRET in
+// a header, and over plain HTTP that header is readable by anything on the path.
+// Hosting platforms also redirect HTTP→HTTPS, and ArduinoHttpClient does not
+// follow redirects — a plain request to a PaaS host simply fails.
+//
+// If TLS handshakes fail, the radio module's certificate bundle is probably
+// out of date: update the UNO R4 WiFi firmware from the Arduino IDE
+// (Tools → Firmware Updater).
+#define USE_TLS     0
+
+#define SERVER_HOST "192.168.0.25"
 #define SERVER_PORT 3000
 
 // ---- Device UUID ----

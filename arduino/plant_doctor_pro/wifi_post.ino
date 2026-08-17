@@ -11,8 +11,16 @@
 #include "globals.h"
 #include "config.h"
 
-WiFiClient wifi;
-HttpClient client = HttpClient(wifi, SERVER_IP, SERVER_PORT);
+// Plain or TLS, chosen in config.h. WiFiSSLClient verifies the server against
+// the certificate bundle baked into the radio module's firmware, so no
+// certificate needs to live in the sketch.
+#if USE_TLS
+  WiFiSSLClient wifi;
+#else
+  WiFiClient wifi;
+#endif
+
+HttpClient client = HttpClient(wifi, SERVER_HOST, SERVER_PORT);
 
 void connectToWiFi() {
   if (WiFi.status() == WL_NO_MODULE) {
@@ -64,7 +72,11 @@ void sendSensorData() {
   jsonData += "}";
 
   Serial.println("\nSending POST request...");
-  Serial.print("Path: ");
+  Serial.print("To: ");
+  Serial.print(USE_TLS ? "https://" : "http://");
+  Serial.print(SERVER_HOST);
+  Serial.print(":");
+  Serial.print(SERVER_PORT);
   Serial.println(path);
 
   Serial.print("JSON: ");
