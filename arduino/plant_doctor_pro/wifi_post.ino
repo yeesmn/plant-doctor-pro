@@ -70,7 +70,17 @@ void sendSensorData() {
   Serial.print("JSON: ");
   Serial.println(jsonData);
 
-  client.post(path, "application/json", jsonData);
+  // Sending a custom header means building the request the long way:
+  // client.post(path, contentType, body) has no way to add headers.
+  // Order matters — headers first, then beginBody(), then the payload.
+  client.beginRequest();
+  client.post(path);
+  client.sendHeader("Content-Type", "application/json");
+  client.sendHeader("Content-Length", jsonData.length());
+  client.sendHeader("X-Device-Secret", DEVICE_SECRET);   // config.h
+  client.beginBody();
+  client.print(jsonData);
+  client.endRequest();
 
   int statusCode = client.responseStatusCode();
   String response = client.responseBody();
@@ -83,6 +93,12 @@ void sendSensorData() {
 
   if (statusCode == 200 || statusCode == 201) {
     Serial.println("Data sent successfully.");
+  } else if (statusCode == 401) {
+    Serial.println("Rejected: DEVICE_SECRET does not match the backend.");
+  } else if (statusCode == 429) {
+    Serial.println("Rejected: rate limited. Backing off until the next cycle.");
+  } else if (statusCode == 503) {
+    Serial.println("Rejected: backend has no DEVICE_SECRET configured.");
   } else {
     Serial.println("Failed to send data.");
   }

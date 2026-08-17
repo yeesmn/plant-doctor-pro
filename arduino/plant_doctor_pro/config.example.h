@@ -26,6 +26,16 @@
 // The backend rejects any POST that is missing device_id (HTTP 400).
 #define DEVICE_ID  "00000000-0000-0000-0000-000000000000"
 
+// ---- Shared secret sent as the X-Device-Secret header on every POST ----
+// The backend refuses writes that do not carry it (401), so that knowing a
+// device UUID is not enough to inject readings. Must match DEVICE_SECRET in
+// web/backend/.env — and in the hosting platform's environment variables once
+// the backend is deployed.
+//
+// Generate one with:
+//   node -e "console.log(require('crypto').randomBytes(24).toString('base64url'))"
+#define DEVICE_SECRET  "YOUR_DEVICE_SECRET"
+
 // ---- Soil moisture calibration ----
 // The sketch converts the raw ADC reading (0-1023) into a PERCENTAGE before
 // sending it, because the database (`plant_types.min_moisture` /

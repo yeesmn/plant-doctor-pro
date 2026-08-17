@@ -320,7 +320,7 @@ Progress:
 |---|---|---|
 | 1 | Make it start on a host — `PORT`, `start` script, Node version | ✅ `029ac8a` |
 | 2 | Delete the unused read/write routes | ✅ |
-| 3 | Lock down what remains — device secret, CORS, error bodies, rate limit | ☐ |
+| 3 | Lock down what remains — device secret, CORS, error bodies, rate limit | ✅ |
 | 4 | Correctness — `.maybeSingle()`, input validation, fail-fast env, error/404 handlers, health check | ☐ |
 | 5 | Housekeeping + deploy config | ☐ |
 
@@ -367,6 +367,31 @@ POST with no body still returns its 400.
 - `app.use(cors())` allows every origin — its own comment says "fine for dev/study".
 - Every failure returns `error.message` straight from PostgREST, leaking schema details.
 - No rate limit: an open POST endpoint can be used to fill the Supabase free tier.
+
+**Done.** New [middleware.js](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/web/backend/js/middleware.js)
+holds both controls, mounted on `/api` ahead of the router:
+
+| Control | Behaviour |
+|---|---|
+| `requireDeviceSecret` | compares `X-Device-Secret` against `DEVICE_SECRET` in constant time. **401** when missing or wrong, **503** when the env var is unset — it fails closed, because a missing variable silently disabling auth is how endpoints end up open in production |
+| `rateLimit` | fixed one-minute window, 20 requests per IP, in memory, no dependency. Sweeps expired entries once it tracks more than 1000 IPs so the map cannot grow without bound. Sets `Retry-After` on the 429 |
+| CORS | middleware removed entirely — the Arduino is not a browser, and the dashboard never calls this server |
+| Error bodies | `error.message` from PostgREST named tables and constraints; responses are now a flat `Internal server error` with the real reason logged server-side |
+
+`app.set('trust proxy', 1)` was added so `req.ip` is the device rather than the
+platform's proxy — without it every caller shares one rate-limit bucket.
+
+Firmware side: `DEVICE_SECRET` in `config.h`, sent via
+`beginRequest()` / `sendHeader()` / `beginBody()` (the one-line `client.post()` form cannot
+carry headers), and the Serial output now names 401 / 429 / 503 instead of a generic
+"Failed to send data".
+
+Verified against a running server: no header → 401, wrong secret → 401, right secret →
+passes to the handler, unset env var → 503, 21st request in a minute → 429 with
+`Retry-After: 50`, and a DB failure now answers `{"error":"Internal server error"}`.
+
+**Still open here:** one shared secret for the whole fleet is the stopgap version of 5.5.
+Per-device secrets need the pairing flow.
 
 #### Step 4 — correctness
 

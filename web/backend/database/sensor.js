@@ -38,8 +38,11 @@ router.post('/sensor-data', async (req, res) => {
     .eq('id', device_id)
     .single()
 
+  // Log the real reason server-side; tell the client nothing about the schema.
+  // PostgREST messages name tables, columns and constraints.
   if (deviceError) {
-    return res.status(500).json({ error: deviceError.message })
+    console.error('POST /sensor-data — device lookup failed:', deviceError)
+    return res.status(500).json({ error: 'Internal server error' })
   }
 
   if (!device) {
@@ -52,7 +55,8 @@ router.post('/sensor-data', async (req, res) => {
     .insert({ device_id, moisture, light, temperature, humidity, roll, pitch, plant_status })
 
   if (error) {
-    return res.status(500).json({ error: error.message })
+    console.error('POST /sensor-data — insert failed:', error)
+    return res.status(500).json({ error: 'Internal server error' })
   }
 
   res.status(201).json({ message: 'Sensor data saved', data })
