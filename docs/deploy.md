@@ -112,3 +112,55 @@ difference.
   the board can read it.
 - **The PC is still needed for the dashboard**, which runs under Vite locally. Deploying the
   frontend is a separate job.
+
+---
+
+# Deploying the dashboard
+
+The frontend is a Vite SPA that talks to Supabase directly — it never calls the Express
+service. [render.yaml](../render.yaml) declares it as a second service in the same
+Blueprint, so a `Manual sync` picks it up.
+
+## 1. Deploy
+
+Render → the existing `plant-doctor-pro` Blueprint → **Manual sync**. It creates
+`plant-doctor-pro-frontend` and asks for two values:
+
+| Variable | Value |
+|---|---|
+| `VITE_SUPABASE_URL` | same project URL as the backend |
+| `VITE_SUPABASE_PUBLISHABLE_KEY` | the **publishable/anon** key — never the service-role one |
+
+`VITE_USE_MOCK` is pinned to `false` in the blueprint. It bypasses the login gate entirely,
+which is fine locally and unacceptable on a public URL.
+
+Both values end up in the JavaScript bundle. That is by design: they identify the project
+and nothing more, and row-level security is what keeps one user's plants out of another
+user's browser.
+
+## 2. Tell Supabase about the new origin
+
+**Auth → URL Configuration** in the Supabase dashboard:
+
+- **Site URL** → `https://plant-doctor-pro-frontend.onrender.com`
+- **Redirect URLs** → add the same origin (keep `http://localhost:5173` for local work)
+
+Skip this and sign-up confirmation links point at localhost, which fails for anyone who is
+not sitting at the dev machine.
+
+## 3. Check it
+
+1. Open the site in a private window → the login page appears (not the dashboard).
+2. Log in → the plant picker in the nav bar lists the account's plants.
+3. Switch plants → the hero, sensor cards and history all follow, and the choice survives a
+   reload.
+4. The connection pill reads `Arduino connected` only if the selected plant reported within
+   15 minutes; otherwise `Last seen …`.
+
+## Notes
+
+- **Devices belong to a user.** RLS filters `devices` by `auth.uid()`, so an account with no
+  rows sees the empty state, not someone else's plants. Adding a plant is still a manual
+  `INSERT` — the pairing flow is 5.5.
+- **The picker is not device management.** Renaming, adding and removing plants are not
+  built yet.

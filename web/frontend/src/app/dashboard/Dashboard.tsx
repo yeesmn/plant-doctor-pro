@@ -5,54 +5,131 @@ import { CareSuggestions } from "../components/care-suggestions";
 import { HistoryChart } from "../components/history-chart";
 import { DeviceFooter } from "../components/device-footer";
 import { getCurrentUser } from "../data/auth";
-import { fetchNewestDevice, fetchReadings } from "../api/fetch-data";
+import { fetchDevices, fetchLastSeen, fetchReadings, type Device } from "../api/fetch-data";
 import { buildDashboardView, type DashboardView } from "../api/dashboard-view";
 import { getMockData } from "../api/mock-readings";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 
 // Set VITE_USE_MOCK=true in web/frontend/.env to render synthetic sensor data
 // (no Supabase / login needed) — useful for checking the dashboard works.
 const USE_MOCK = import.meta.env.VITE_USE_MOCK === "true";
 
+// Remember the chosen plant per user, so a reload does not bounce back to a
+// different one. Keyed by user id: switching accounts must not inherit a
+// selection the new account cannot even see.
+function storageKey(userId: string) {
+  return `pdp.selectedDevice.${userId}`;
+}
+
+function readStoredSelection(userId: string): string | null {
+  try {
+    return localStorage.getItem(storageKey(userId));
+  } catch {
+    return null; // private mode / storage disabled — not worth failing over
+  }
+}
+
+function storeSelection(userId: string, deviceId: string) {
+  try {
+    localStorage.setItem(storageKey(userId), deviceId);
+  } catch {
+    /* ignore */
+  }
+}
+
+// Which plant to open when nothing has been chosen yet: the one that reported
+// most recently. devices.created_at cannot decide this — the seeded rows share
+// a single timestamp, so "newest device" was really "whatever Postgres
+// returned first".
+function pickDefaultDevice(devices: Device[], lastSeen: Record<string, string>): string {
+  const withReadings = devices
+    .filter((d) => lastSeen[d.id])
+    .sort((a, b) => lastSeen[b.id].localeCompare(lastSeen[a.id]));
+
+  return withReadings[0]?.id ?? devices[0].id;
+}
+
 export default function Dashboard() {
   const [user, setUser] = useState<User | null>(null);
+  const [devices, setDevices] = useState<Device[]>([]);
+  const [lastSeen, setLastSeen] = useState<Record<string, string>>({});
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [view, setView] = useState<DashboardView | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (USE_MOCK) return;
-    getCurrentUser().then(setUser).catch(console.error);
-  }, []);
-
+  // ─── 1. Who is logged in, and which plants do they own? ───────────────
   useEffect(() => {
     let active = true;
 
     (async () => {
-      setLoading(true);
       setError(null);
 
-      // Local mock mode — skip Supabase entirely
       if (USE_MOCK) {
         const { device, readings } = getMockData();
-        if (active) {
-          setView(buildDashboardView(device, readings));
-          setLoading(false);
-        }
+        if (!active) return;
+        setDevices([device]);
+        setSelectedId(device.id);
+        setLastSeen({ [device.id]: readings[readings.length - 1].recorded_at });
+        setView(buildDashboardView(device, readings));
+        setLoading(false);
         return;
       }
 
       try {
-        const device = await fetchNewestDevice();
-        if (!device) {
-          if (active) setView(null);
+        const currentUser = await getCurrentUser();
+        if (!active) return;
+        setUser(currentUser);
+
+        // RLS scopes this to the logged-in user's own devices.
+        const owned = await fetchDevices();
+        if (!active) return;
+        setDevices(owned);
+
+        if (owned.length === 0) {
+          setLoading(false);
           return;
         }
+
+        const seen = await fetchLastSeen(owned.map((d) => d.id));
+        if (!active) return;
+        setLastSeen(seen);
+
+        const stored = currentUser ? readStoredSelection(currentUser.id) : null;
+        const storedStillExists = stored && owned.some((d) => d.id === stored);
+
+        setSelectedId(storedStillExists ? stored : pickDefaultDevice(owned, seen));
+      } catch (e) {
+        if (active) {
+          setError(e instanceof Error ? e.message : "Failed to load your devices");
+          setLoading(false);
+        }
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  // ─── 2. Readings for whichever plant is selected ──────────────────────
+  useEffect(() => {
+    if (USE_MOCK || !selectedId) return;
+
+    const device = devices.find((d) => d.id === selectedId);
+    if (!device) return;
+
+    let active = true;
+    setLoading(true);
+    setError(null);
+
+    (async () => {
+      try {
         const readings = await fetchReadings(device.id, 90);
         if (active) setView(buildDashboardView(device, readings));
       } catch (e) {
-        if (active) setError(e instanceof Error ? e.message : "Failed to load dashboard");
+        if (active) setError(e instanceof Error ? e.message : "Failed to load readings");
       } finally {
         if (active) setLoading(false);
       }
@@ -61,7 +138,15 @@ export default function Dashboard() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [selectedId, devices]);
+
+  const handleSelectDevice = useCallback(
+    (deviceId: string) => {
+      setSelectedId(deviceId);
+      if (user) storeSelection(user.id, deviceId);
+    },
+    [user]
+  );
 
   return (
     <div
@@ -75,7 +160,13 @@ export default function Dashboard() {
         position: "relative",
       }}
     >
-      <NavBar user={user} />
+      <NavBar
+        user={user}
+        devices={devices}
+        selectedId={selectedId}
+        lastSeen={lastSeen}
+        onSelectDevice={handleSelectDevice}
+      />
 
       <main
         style={{
@@ -103,7 +194,7 @@ export default function Dashboard() {
           </div>
         )}
 
-        {!loading && !error && !view && (
+        {!loading && !error && devices.length === 0 && (
           <div
             style={{
               background: "#FFFFFF",
@@ -116,17 +207,19 @@ export default function Dashboard() {
               color: "#6B8F76",
             }}
           >
-            No device found for your account yet. Add a device and wait for its
-            first sensor reading.
+            No plants registered to this account yet. Add a device in Supabase
+            with your user id, then point the Arduino at it.
           </div>
         )}
 
+        {devices.length > 0 && (
         <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
           <HeroSection hero={view?.hero} loading={loading} />
           <SensorRow sensors={view?.sensors} loading={loading} />
           <CareSuggestions />
           <HistoryChart history={view?.history} loading={loading} />
         </div>
+        )}
       </main>
 
       <DeviceFooter />

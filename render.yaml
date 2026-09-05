@@ -37,3 +37,31 @@ services:
         sync: false
       - key: DEVICE_SECRET
         sync: false
+
+  # ---- Dashboard (static site) ----
+  # Vite builds to dist/ and Render serves it from its CDN. The bundle contains
+  # only VITE_-prefixed values: the project URL and the PUBLISHABLE key, both of
+  # which are meant to be public. Row-level security is what protects the data,
+  # so a visitor sees nothing until they log in.
+  - type: web
+    name: plant-doctor-pro-frontend
+    runtime: static
+    rootDir: web/frontend
+    buildCommand: npm ci && npm run build
+    staticPublishPath: dist
+
+    envVars:
+      - key: VITE_SUPABASE_URL
+        sync: false
+      - key: VITE_SUPABASE_PUBLISHABLE_KEY
+        sync: false
+      # Mock mode bypasses the login gate entirely — never enable it here.
+      - key: VITE_USE_MOCK
+        value: "false"
+
+    # Single-page app: every path has to return index.html, or a refresh on any
+    # route the app adds later would 404 at the CDN before React ever loads.
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html

@@ -1,8 +1,24 @@
 import { signOutUser } from "../data/auth";
+import { DevicePicker, isOnline, sinceLabel } from "./device-picker";
+import type { Device } from "../api/fetch-data";
 import type { User } from "@supabase/supabase-js";
 
-export function NavBar({user}: {user: User | null}) {
+type NavBarProps = {
+  user: User | null;
+  devices: Device[];
+  selectedId: string | null;
+  lastSeen: Record<string, string>;
+  onSelectDevice: (deviceId: string) => void;
+};
+
+export function NavBar({ user, devices, selectedId, lastSeen, onSelectDevice }: NavBarProps) {
   const links = ["Dashboard", "History", "Devices", "Suggestions"];
+
+  // Connection state of the device currently being viewed. This used to be a
+  // hardcoded "Arduino Connected" pill, which claimed the board was online even
+  // when it had not reported for two months.
+  const selectedLastSeen = selectedId ? lastSeen[selectedId] : undefined;
+  const online = isOnline(selectedLastSeen);
 
     async function handleLogout() {
     try {
@@ -63,41 +79,51 @@ export function NavBar({user}: {user: User | null}) {
 
       {/* Right */}
       <div className="flex items-center gap-4">
-        {/* Arduino Connected pill */}
-        <div
-          style={{
-            background: "rgba(46,125,82,0.08)",
-            border: "1px solid rgba(46,125,82,0.25)",
-            borderRadius: "999px",
-            padding: "5px, 14px",
-            display: "flex",
-            alignItems: "center",
-            gap: "7px",
-          }}
-        >
-          <span
+        {/* Which plant is being viewed */}
+        <DevicePicker
+          devices={devices}
+          selectedId={selectedId}
+          lastSeen={lastSeen}
+          onSelect={onSelectDevice}
+        />
+
+        {/* Connection state of that plant — derived, not decorative */}
+        {devices.length > 0 && (
+          <div
             style={{
-              width: 8,
-              height: 8,
-              borderRadius: "50%",
-              background: "#2E7D52",
-              boxShadow: "0 0 0 0 rgba(46,125,82,0.4)",
-              animation: "arduinoPulse 2s infinite",
-              display: "inline-block",
-              flexShrink: 0,
-            }}
-          />
-          <span
-            style={{
-              fontFamily: "'DM Mono', monospace",
-              fontSize: "12px",
-              color: "#2E7D52",
-              letterSpacing: "0.03em",
+              background: online ? "rgba(46,125,82,0.08)" : "rgba(107,143,118,0.08)",
+              border: `1px solid ${online ? "rgba(46,125,82,0.25)" : "rgba(107,143,118,0.25)"}`,
+              borderRadius: "999px",
+              padding: "5px 14px",
+              display: "flex",
+              alignItems: "center",
+              gap: "7px",
             }}
           >
-            Arduino Connected
-          </span>
-        </div>
+            <span
+              style={{
+                width: 8,
+                height: 8,
+                borderRadius: "50%",
+                background: online ? "#2E7D52" : "#A8B8AC",
+                boxShadow: online ? "0 0 0 0 rgba(46,125,82,0.4)" : "none",
+                animation: online ? "arduinoPulse 2s infinite" : "none",
+                display: "inline-block",
+                flexShrink: 0,
+              }}
+            />
+            <span
+              style={{
+                fontFamily: "'DM Mono', monospace",
+                fontSize: "12px",
+                color: online ? "#2E7D52" : "#6B8F76",
+                letterSpacing: "0.03em",
+              }}
+            >
+              {online ? "Arduino connected" : `Last seen ${sinceLabel(selectedLastSeen)}`}
+            </span>
+          </div>
+        )}
 
         <div>
           <button

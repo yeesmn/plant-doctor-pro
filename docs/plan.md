@@ -114,6 +114,7 @@ within each tier.
 
 | # | Issue | Priority |
 |---|---|---|
+| [5.9](#59--pick-your-own-device-after-login--done-2026-09-05) | Pick your own device after login + deploy the dashboard | ✅ done |
 | [5.8](#58--backend-deployment-readiness--p1-in-progress) | Backend deployment readiness | **P1 — in progress** |
 | [5.1](#51--soil-moisture-is-uncalibrated-blocks-health-scoring--p1-code-done--needs-measuring) | Soil moisture is uncalibrated | P1 — code done, needs measuring |
 | [5.2](#52--recorded_at-has-no-time-zone--p1-done-migration-run-2026-07-25) | `recorded_at` has no time zone | ✅ done |
@@ -481,3 +482,32 @@ table as "deploy without touching the firmware". Step 3 put `DEVICE_SECRET` in a
 plain HTTP means that header is readable by anything on the path — so TLS is now required and
 Render's free tier is the recommendation. The `USE_TLS` toggle keeps local LAN debugging
 available rather than trading one setup for the other.
+
+### 5.9 — Pick your own device after login — **DONE 2026-09-05**
+
+The dashboard opened whichever device `fetchNewestDevice()` returned and gave no way to
+switch. Two things made that worse than it looked:
+
+- **The "newest" device was arbitrary.** All three seeded rows share one `created_at`, so
+  `.order("created_at").limit(1)` was a tie broken by whatever Postgres returned first — the
+  plant on screen was often not the one with the Arduino attached.
+- **Every device belonged to the wrong account.** They were owned by `b137c501…` while the
+  account in use is `da20fe00…` (`yeesmn`), so logging in as the intended user showed the
+  empty state. Fixed with a one-off `UPDATE devices SET user_id = …`.
+
+**Changes:**
+
+| File | Change |
+|---|---|
+| [fetch-data.ts](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/web/frontend/src/app/api/fetch-data.ts) | `fetchNewestDevice()` → `fetchDevices()` (all of the user's plants, RLS-scoped) plus `fetchLastSeen()` for the newest reading per device |
+| [Dashboard.tsx](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/web/frontend/src/app/dashboard/Dashboard.tsx) | two effects — one loads user + devices, the other loads readings for whichever device is selected. Default: stored choice → most recently reporting device → first by name. Choice persists in `localStorage`, keyed by user id so accounts do not inherit each other's selection |
+| [device-picker.tsx](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/web/frontend/src/app/components/device-picker.tsx) | new dropdown: plant name, species, last-seen, and a status dot. One plant renders as a plain label — nothing to choose |
+| [nav-bar.tsx](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/web/frontend/src/app/components/nav-bar.tsx) | the hardcoded "Arduino Connected" pill is now derived: connected only if the selected plant reported within 15 minutes (three missed cycles), otherwise `Last seen …` |
+
+Deployment is declared in [render.yaml](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/render.yaml)
+as a static site alongside the backend; the steps, including the Supabase Auth URL
+configuration that sign-up emails depend on, are in
+[deploy.md](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/docs/deploy.md).
+
+**Not included** (still 5.5 / 5.6): adding, renaming or removing plants from the UI, and the
+`CareSuggestions` / `DeviceFooter` mock data.
