@@ -19,7 +19,7 @@ graph TD
 ## Current Status (2026-07-25)
 
 Phases 1–4 are **done**. The full path *Arduino → Express → Supabase* was verified over
-the LAN on **2026-07-09** (see [test-lan-2026-07-01.md](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/docs/test-lan-2026-07-01.md)):
+the LAN on **2026-07-09** (see [test-lan-2026-07-01.md](test-lan-2026-07-01.md)):
 readings landed in `plant_data` every 5 minutes (10 samples × 30 s, averaged), and the
 dashboard runs on live data (`VITE_USE_MOCK=false`).
 
@@ -33,7 +33,7 @@ happy-path test did not cover.
 > ⚠ **5.1 is written but unproven on hardware** — the moisture-to-percent firmware has
 > not been compiled or uploaded, and its calibration constants are still placeholders. The
 > checklist is in
-> [worklog-2026-07-25.md](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/docs/worklog-2026-07-25.md).
+> [worklog-2026-07-25.md](worklog-2026-07-25.md).
 > 5.2 is done.
 
 ---
@@ -44,19 +44,19 @@ happy-path test did not cover.
 Prepare the database tables and reference nodes for the devices.
 1.  Log in to your **Supabase Dashboard** and create a new project.
 2.  Navigate to the **SQL Editor** tab.
-3.  Execute the script in [schema.sql](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/web/backend/database/schema.sql) to generate the tables (`devices`, `plant_data`, `care_suggestions`).
-4.  Execute the seed script in [mock_data.sql](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/web/backend/database/mock_data.sql) to set up test devices and preliminary entries.
+3.  Execute the script in [schema.sql](../web/backend/database/schema.sql) to generate the tables (`devices`, `plant_data`, `care_suggestions`).
+4.  Execute the seed script in [mock_data.sql](../web/backend/database/mock_data.sql) to set up test devices and preliminary entries.
 5.  Retrieve your **Supabase API URL** and **Service Role API Key** from the project settings.
 
 ### Phase 2: Express Backend Environment Configuration
 Configure and start the middleware API.
-1.  Navigate to [web/backend](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/web/backend).
+1.  Navigate to [web/backend](../web/backend).
 2.  Create a `.env` file containing:
     ```env
     SUPABASE_URL=YOUR_SUPABASE_PROJECT_URL
     SUPABASE_KEY=YOUR_SUPABASE_SERVICE_ROLE_OR_ANON_KEY
     ```
-3.  Open a terminal inside [web/backend](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/web/backend) and run:
+3.  Open a terminal inside [web/backend](../web/backend) and run:
     ```bash
     npm install
     npm run server
@@ -65,13 +65,13 @@ Configure and start the middleware API.
     `Server running on http://localhost:3000`
 5.  *(Optional)* Smoke-test the endpoint with curl. The API is **write-only** — the read
     routes were removed in 5.8 step 2, so use a POST (see the command in
-    [test-lan-2026-07-01.md](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/docs/test-lan-2026-07-01.md)).
+    [test-lan-2026-07-01.md](test-lan-2026-07-01.md)).
 
 ### Phase 3: Firmware & Arduino Sensor Integration
 Complete the micro-controller logic to connect to WiFi and transmit actual metrics.
-1.  Open the [arduino](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/arduino) folder.
-2.  Configure your local wireless SSID credentials in [wifi_post.ino](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/arduino/plant_doctor_pro/wifi_post.ino).
-3.  Complete [plant_doctor_pro.ino](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/arduino/plant_doctor_pro/plant_doctor_pro.ino):
+1.  Open the [arduino](../arduino) folder.
+2.  Configure your local wireless SSID credentials in [wifi_post.ino](../arduino/plant_doctor_pro/wifi_post.ino).
+3.  Complete [plant_doctor_pro.ino](../arduino/plant_doctor_pro/plant_doctor_pro.ino):
     *   Integrate library inclusions for your sensors (e.g. DHT11 temperature/humidity, soil moisture pin reads, light sensor, tilt switch).
     *   In `setup()`, call the WiFi initialization routine.
     *   In `loop()`, poll sensor values every $N$ seconds.
@@ -89,16 +89,16 @@ Complete the micro-controller logic to connect to WiFi and transmit actual metri
 
 ### Phase 4: Frontend Live Integration
 Shift the dashboard from static mock data to dynamically fetching database logs.
-1.  Update the fetch client configuration in [fetch-data.ts](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/web/frontend/src/app/api/fetch-data.ts):
+1.  Update the fetch client configuration in [fetch-data.ts](../web/frontend/src/app/api/fetch-data.ts):
     *   Dynamically load the `device_id` relative to the selected plant/device.
-2.  Update the components to ingest dynamic state instead of loading static mock data from [mock-plant.ts](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/web/frontend/src/app/data/mock-plant.ts):
+2.  Update the components to ingest dynamic state instead of loading static mock data from [mock-plant.ts](../web/frontend/src/app/data/mock-plant.ts):
     *   Implement loading states and try/catch blocks for error boundaries.
     *   Configure dynamic ranges (7D/30D/90D) to request corresponding historical date-truncations from the backend.
-3.  Integrate the visual dark botanical theme. In [App.tsx](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/web/frontend/src/app/App.tsx), change:
+3.  Integrate the visual dark botanical theme. In [App.tsx](../web/frontend/src/app/App.tsx), change:
     *   `background: "#F4F7F2"` $\rightarrow$ `background: "var(--plant-bg)"` (`#0D1F17`)
     *   `color: "#1A2E22"` $\rightarrow$ `color: "var(--plant-text)"` (`#F0EDE6`)
     *   Update card backgrounds from `#FFFFFF` to `var(--plant-card)` (`#1A3828`) and borders to `var(--plant-border)` (`#2D5A3D`) to fulfill the forest green theme guidelines.
-4.  Navigate to [web/frontend](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/web/frontend) and run:
+4.  Navigate to [web/frontend](../web/frontend) and run:
     ```bash
     npm install
     npm run dev
@@ -135,15 +135,15 @@ now only ever receives percent.
 
 | File | Change |
 |---|---|
-| [config.h](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/arduino/plant_doctor_pro/config.h) / [config.example.h](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/arduino/plant_doctor_pro/config.example.h) | new `MOISTURE_RAW_DRY` / `MOISTURE_RAW_WET` calibration points |
-| [sensor.ino](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/arduino/plant_doctor_pro/sensor.ino) | `moistureToPercent()` — linear map, clamped to 0-100, `-1` passes through; `#error` if DRY <= WET |
-| [datafiltering.ino](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/arduino/plant_doctor_pro/datafiltering.ino) | averages raw, then converts once → `filtered_moisture_pct` |
-| [plant_status.ino](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/arduino/plant_doctor_pro/plant_status.ino) | thresholds are now `MOISTURE_PCT_DRY 30` / `MOISTURE_PCT_WET 80`, with a `-1` guard |
-| [wifi_post.ino](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/arduino/plant_doctor_pro/wifi_post.ino) | POSTs `filtered_moisture_pct` |
-| [dashboard-view.ts](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/web/frontend/src/app/api/dashboard-view.ts) | moisture is back in `computeHealth()`; card renders `%` via `inRange()` |
+| [config.h](../arduino/plant_doctor_pro/config.h) / [config.example.h](../arduino/plant_doctor_pro/config.example.h) | new `MOISTURE_RAW_DRY` / `MOISTURE_RAW_WET` calibration points |
+| [sensor.ino](../arduino/plant_doctor_pro/sensor.ino) | `moistureToPercent()` — linear map, clamped to 0-100, `-1` passes through; `#error` if DRY <= WET |
+| [datafiltering.ino](../arduino/plant_doctor_pro/datafiltering.ino) | averages raw, then converts once → `filtered_moisture_pct` |
+| [plant_status.ino](../arduino/plant_doctor_pro/plant_status.ino) | thresholds are now `MOISTURE_PCT_DRY 30` / `MOISTURE_PCT_WET 80`, with a `-1` guard |
+| [wifi_post.ino](../arduino/plant_doctor_pro/wifi_post.ino) | POSTs `filtered_moisture_pct` |
+| [dashboard-view.ts](../web/frontend/src/app/api/dashboard-view.ts) | moisture is back in `computeHealth()`; card renders `%` via `inRange()` |
 
 `plant_types.min_moisture` / `max_moisture` needed no change — all eight seeded species
-in [mock_data.sql](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/web/backend/database/mock_data.sql)
+in [mock_data.sql](../web/backend/database/mock_data.sql)
 were already in percent.
 
 **Remaining (hardware in the loop):**
@@ -154,7 +154,7 @@ were already in percent.
 3.  Confirm the Serial Monitor prints a sane `Moisture: xx % (raw yyy)` and that a
     watered pot moves the number the right way.
 4.  Deal with the raw rows from the 2026-07-09 LAN test — see
-    [migrations/2026-07-25_moisture_to_percent.sql](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/web/backend/database/migrations/2026-07-25_moisture_to_percent.sql).
+    [migrations/2026-07-25_moisture_to_percent.sql](../web/backend/database/migrations/2026-07-25_moisture_to_percent.sql).
     **The script is scoped to one `device_id` on purpose:** the demo rows seeded by
     `mock_data.sql` are already in percent (62.0, 52.0, …), and a blanket "convert
     everything before date X" would push them through the formula a second time and clamp
@@ -168,7 +168,7 @@ were already in percent.
 
 ### 5.2 — `recorded_at` has no time zone — **P1, DONE (migration run 2026-07-25)**
 
-[schema.sql](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/web/backend/database/schema.sql)
+[schema.sql](../web/backend/database/schema.sql)
 declared `recorded_at TIMESTAMP DEFAULT NOW()` — *without* time zone. Postgres stores
 UTC, PostgREST returned it with no offset (`2026-07-25T01:00:00`), and JavaScript's
 `new Date()` parses an offset-less ISO string as **local time**. In KST that shifted every
@@ -179,9 +179,9 @@ reading by 9 hours: "last updated 9 hr ago" for a row that had just landed, and
 
 | File | Change |
 |---|---|
-| [schema.sql](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/web/backend/database/schema.sql) | all five `TIMESTAMP DEFAULT NOW()` columns are now `TIMESTAMPTZ` |
-| [migrations/2026-07-25_timestamptz.sql](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/web/backend/database/migrations/2026-07-25_timestamptz.sql) | converts the existing columns, reinterpreting stored values as UTC |
-| [dashboard-view.ts](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/web/frontend/src/app/api/dashboard-view.ts) | `buildHistory()` groups by `localDayKey()` instead of slicing the ISO string |
+| [schema.sql](../web/backend/database/schema.sql) | all five `TIMESTAMP DEFAULT NOW()` columns are now `TIMESTAMPTZ` |
+| [migrations/2026-07-25_timestamptz.sql](../web/backend/database/migrations/2026-07-25_timestamptz.sql) | converts the existing columns, reinterpreting stored values as UTC |
+| [dashboard-view.ts](../web/frontend/src/app/api/dashboard-view.ts) | `buildHistory()` groups by `localDayKey()` instead of slicing the ISO string |
 
 That last one is a second, independent bug: the chart bucketed by the **UTC** day while
 `shortDate()` labelled in **local** time, so an evening KST reading was filed under the
@@ -206,8 +206,8 @@ shipping.
   `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY` and `VITE_USE_MOCK`. The backend
   copy in `web/backend/.env` is untouched and is the only place the secret lives.
 - Added committed `.env.example` templates for
-  [frontend](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/web/frontend/.env.example)
-  and [backend](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/web/backend/.env.example),
+  [frontend](../web/frontend/.env.example)
+  and [backend](../web/backend/.env.example),
   each stating which side the key belongs on.
 - Verified: `git log --all -- "*.env"` is empty, so **no `.env` was ever committed** and the
   key was never exposed through the repository — no rotation needed. The rebuilt bundle
@@ -235,10 +235,10 @@ Things to verify while it runs:
 login → auth.uid() → devices (filtered by RLS) → newest row → plant_data (by device_id)
 ```
 
-[fetch-data.ts](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/web/frontend/src/app/api/fetch-data.ts)
+[fetch-data.ts](../web/frontend/src/app/api/fetch-data.ts)
 `fetchNewestDevice()` carries **no `user_id` filter** — it just takes the newest row by
 `created_at`. Other users' plants stay hidden only because the RLS policy in
-[policy.sql](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/web/backend/database/policy.sql)
+[policy.sql](../web/backend/database/policy.sql)
 (`devices.user_id = auth.uid()`) filters them server-side. The same holds for
 `plant_data`. That works, but it means the *client* has no notion of ownership.
 
@@ -246,7 +246,7 @@ login → auth.uid() → devices (filtered by RLS) → newest row → plant_data
 
 The only thing tying a physical board to a `devices` row is the **`DEVICE_ID` UUID
 hand-copied into `config.h`**, sent on every POST
-([wifi_post.ino](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/arduino/plant_doctor_pro/wifi_post.ino)).
+([wifi_post.ino](../arduino/plant_doctor_pro/wifi_post.ino)).
 The database stores no hardware identity at all, so these questions are unanswerable:
 
 - Which physical board is attached to this plant? (no MAC / serial)
@@ -254,7 +254,7 @@ The database stores no hardware identity at all, so these questions are unanswer
   `recorded_at`)
 - What IP, signal strength, or firmware version? (printed to Serial, never transmitted)
 
-**Security:** [sensor.js](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/web/backend/database/sensor.js)
+**Security:** [sensor.js](../web/backend/database/sensor.js)
 only checks that the `device_id` *exists*, and the backend uses the service-role key, which
 bypasses RLS. **Anyone who knows a device UUID can write readings into someone else's
 plant.** Low risk on a LAN; a blocker before 5.7 exposes the endpoint publicly.
@@ -307,7 +307,7 @@ switch devices. `fetchNewestDevice()` needs a `fetchDevices()` sibling plus a se
 ### 5.6 — Dashboard sections still on mock data — **P3**
 
 - **`CareSuggestions`** — imports `SUGGESTIONS` / `RADAR_DATA` from
-  [mock-plant.ts](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/web/frontend/src/app/data/mock-plant.ts).
+  [mock-plant.ts](../web/frontend/src/app/data/mock-plant.ts).
   The `care_suggestions` table exists but nothing writes to it; the radar scores can be
   derived from the same per-factor scores `computeHealth()` already calculates.
 - **`DeviceFooter`** — board / firmware / uptime / signal strength have **no columns in
@@ -328,7 +328,7 @@ is off, asleep, or on another network. Two options:
   server-side validation is lost.
 
 **Option A shipped** — the backend runs on Render (see 5.8 and
-[deploy.md](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/docs/deploy.md)), and since
+[deploy.md](deploy.md)), and since
 2026-11-17 the dashboard does too, so neither half of the pipeline needs the PC any more. The
 endpoint is not open: 5.8 step 3 added a shared device secret, which is the minimum that had to
 land before exposing it. Full per-device identity is still 5.5.
@@ -341,7 +341,7 @@ Supabase key on the device instead of a scoped secret, and lose the input valida
 ### 5.8 — Backend deployment readiness — **DONE, deployed on Render**
 
 All five steps below are done and the service `plant-doctor-pro-backend` is live on Render's
-free tier, declared in [render.yaml](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/render.yaml).
+free tier, declared in [render.yaml](../render.yaml).
 
 Deploying the Express backend was requested on 2026-08-11 (this is 5.7 option A). An audit
 of what has to change first, worked **one step at a time, each reviewed before the next**.
@@ -359,7 +359,7 @@ Progress:
 #### Step 1 — the service will not boot without these
 
 - **`PORT` is hardcoded** to 3000 in
-  [server.js](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/web/backend/js/server.js).
+  [server.js](../web/backend/js/server.js).
   Every host injects its own `PORT`; ignoring it means the health check never passes and
   the deploy is killed. (The comment above the line already says "Read PORT which default
   to 3000" — only the implementation is missing.)
@@ -371,9 +371,9 @@ Progress:
 #### Step 2 — delete the routes nobody uses
 
 The frontend reads Supabase directly
-([fetch-data.ts](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/web/frontend/src/app/api/fetch-data.ts)),
+([fetch-data.ts](../web/frontend/src/app/api/fetch-data.ts)),
 so the only endpoint with a real caller is `POST /api/sensor-data`. Everything else in
-[sensor.js](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/web/backend/database/sensor.js)
+[sensor.js](../web/backend/database/sensor.js)
 is an unauthenticated hole, and the backend's service-role key bypasses RLS:
 
 | Route | Exposure |
@@ -400,7 +400,7 @@ POST with no body still returns its 400.
 - Every failure returns `error.message` straight from PostgREST, leaking schema details.
 - No rate limit: an open POST endpoint can be used to fill the Supabase free tier.
 
-**Done.** New [middleware.js](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/web/backend/js/middleware.js)
+**Done.** New [middleware.js](../web/backend/js/middleware.js)
 holds both controls, mounted on `/api` ahead of the router:
 
 | Control | Behaviour |
@@ -429,7 +429,7 @@ Per-device secrets need the pairing flow.
 
 - **The 404 path is dead code.** `.single()` errors when no row matches, so an unknown
   `device_id` returns **500**, not the 404 the
-  [LAN test cheatsheet](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/docs/test-lan-2026-07-01.md)
+  [LAN test cheatsheet](test-lan-2026-07-01.md)
   documents. `.maybeSingle()` fixes it.
 - No input validation — `moisture: "abc"` becomes a 500. Now that moisture is a percentage,
   0–100 (plus the `-1` sentinel) is a checkable contract.
@@ -472,13 +472,13 @@ rather than a magic number.
 - After deploying: repoint `SERVER_IP` / `SERVER_PORT` in `config.h`.
 
 **Done.** Full instructions now live in
-[deploy.md](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/docs/deploy.md).
+[deploy.md](deploy.md).
 
 | Change | Detail |
 |---|---|
 | Dependencies | dropped `uuid` (never imported), `cors` (middleware removed in step 3) and `vite` — the backend `package.json` had inherited the frontend's `dev`/`build` scripts and its Vite dev dependency. `npm ci --omit=dev` now installs five packages |
 | Logging | `morgan('dev')` locally, `'combined'` when `NODE_ENV=production` — ANSI colour codes are noise in a platform log viewer |
-| [render.yaml](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/render.yaml) | Blueprint: `rootDir: web/backend`, `npm ci --omit=dev`, `npm start`, health check `/health`, the three secrets marked `sync: false` so they are prompted for and never committed |
+| [render.yaml](../render.yaml) | Blueprint: `rootDir: web/backend`, `npm ci --omit=dev`, `npm start`, health check `/health`, the three secrets marked `sync: false` so they are prompted for and never committed |
 | Firmware | `SERVER_IP` → `SERVER_HOST` plus a `USE_TLS` switch: `0` keeps the LAN setup byte-for-byte, `1` swaps `WiFiClient` for `WiFiSSLClient` on port 443. Serial now prints the full target URL |
 
 **The host decision changed during this work.** Fly.io with plain HTTP was originally on the
@@ -503,15 +503,15 @@ switch. Two things made that worse than it looked:
 
 | File | Change |
 |---|---|
-| [fetch-data.ts](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/web/frontend/src/app/api/fetch-data.ts) | `fetchNewestDevice()` → `fetchDevices()` (all of the user's plants, RLS-scoped) plus `fetchLastSeen()` for the newest reading per device |
-| [Dashboard.tsx](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/web/frontend/src/app/dashboard/Dashboard.tsx) | two effects — one loads user + devices, the other loads readings for whichever device is selected. Default: stored choice → most recently reporting device → first by name. Choice persists in `localStorage`, keyed by user id so accounts do not inherit each other's selection |
-| [device-picker.tsx](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/web/frontend/src/app/components/device-picker.tsx) | new dropdown: plant name, species, last-seen, and a status dot. One plant renders as a plain label — nothing to choose |
-| [nav-bar.tsx](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/web/frontend/src/app/components/nav-bar.tsx) | the hardcoded "Arduino Connected" pill is now derived: connected only if the selected plant reported within 15 minutes (three missed cycles), otherwise `Last seen …` |
+| [fetch-data.ts](../web/frontend/src/app/api/fetch-data.ts) | `fetchNewestDevice()` → `fetchDevices()` (all of the user's plants, RLS-scoped) plus `fetchLastSeen()` for the newest reading per device |
+| [Dashboard.tsx](../web/frontend/src/app/dashboard/Dashboard.tsx) | two effects — one loads user + devices, the other loads readings for whichever device is selected. Default: stored choice → most recently reporting device → first by name. Choice persists in `localStorage`, keyed by user id so accounts do not inherit each other's selection |
+| [device-picker.tsx](../web/frontend/src/app/components/device-picker.tsx) | new dropdown: plant name, species, last-seen, and a status dot. One plant renders as a plain label — nothing to choose |
+| [nav-bar.tsx](../web/frontend/src/app/components/nav-bar.tsx) | the hardcoded "Arduino Connected" pill is now derived: connected only if the selected plant reported within 15 minutes (three missed cycles), otherwise `Last seen …` |
 
-Deployment is declared in [render.yaml](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/render.yaml)
+Deployment is declared in [render.yaml](../render.yaml)
 as a static site alongside the backend; the steps, including the Supabase Auth URL
 configuration that sign-up emails depend on, are in
-[deploy.md](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/docs/deploy.md).
+[deploy.md](deploy.md).
 
 **Deployed 2026-11-17** at <https://plant-doctor-pro-frontend.onrender.com>. The first build
 shipped `createClient(undefined, undefined)` — the `VITE_*` values were not set when it ran,
