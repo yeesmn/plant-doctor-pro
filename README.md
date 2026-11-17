@@ -1,11 +1,21 @@
 # plant-doctor-pro
 A stress-aware plant care system using Arduino UNO R4 WiFi. Monitors soil moisture, light, temperature &amp; growth in real time. Local feedback via OLED &amp; LED matrix. Sensor data synced to Supabase for deep health analysis &amp; displayed on a web dashboard.
 
+## Try it
+
 **Live dashboard:** https://plant-doctor-pro-frontend.onrender.com
-(login required. Data is scoped per account, so a new account starts empty.
-Click **Try the demo account** on the login page for a read-only account with three
-simulated plants; setup is in
-[2026-11-17_demo_account.sql](web/backend/database/migrations/2026-11-17_demo_account.sql).)
+
+Click **Try the demo account** on the login page, or sign in with:
+
+| Email | Password |
+|---|---|
+| `demo@example.com` | `demopassword123` |
+
+This is a real Supabase Auth login. The demo account is read-only and owns three
+simulated plants: the database adds a reading for each one every 5 minutes, in the
+same format the Arduino posts. Row-level security scopes data per account, so a
+new account you sign up with starts empty. Setup:
+[2026-11-17_demo_account.sql](web/backend/database/migrations/2026-11-17_demo_account.sql).
 
 ![Plant Doctor Pro dashboard](docs/images/dashboard.png)
 *Screenshot uses the synthetic data from `VITE_USE_MOCK=true`.*
