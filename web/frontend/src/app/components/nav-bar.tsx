@@ -9,9 +9,10 @@ type NavBarProps = {
   selectedId: string | null;
   lastSeen: Record<string, string>;
   onSelectDevice: (deviceId: string) => void;
+  isDemo?: boolean;
 };
 
-export function NavBar({ user, devices, selectedId, lastSeen, onSelectDevice }: NavBarProps) {
+export function NavBar({ user, devices, selectedId, lastSeen, onSelectDevice, isDemo = false }: NavBarProps) {
   const links = ["Dashboard", "History", "Devices", "Suggestions"];
 
   // Connection state of the device currently being viewed. This used to be a
@@ -120,7 +121,11 @@ export function NavBar({ user, devices, selectedId, lastSeen, onSelectDevice }: 
                 letterSpacing: "0.03em",
               }}
             >
-              {online ? "Arduino connected" : `Last seen ${sinceLabel(selectedLastSeen)}`}
+              {online
+                ? isDemo
+                  ? "Simulated feed"
+                  : "Arduino connected"
+                : `Last seen ${sinceLabel(selectedLastSeen)}`}
             </span>
           </div>
         )}

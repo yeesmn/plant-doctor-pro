@@ -55,6 +55,13 @@ services:
         sync: false
       - key: VITE_SUPABASE_PUBLISHABLE_KEY
         sync: false
+      # Public demo login (read-only account, see the 2026-11-17 demo
+      # migration). Not secrets — they are shown on the login page — but kept
+      # out of this file so the password can change without a commit.
+      - key: VITE_DEMO_EMAIL
+        sync: false
+      - key: VITE_DEMO_PASSWORD
+        sync: false
       # Mock mode bypasses the login gate entirely — never enable it here.
       - key: VITE_USE_MOCK
         value: "false"

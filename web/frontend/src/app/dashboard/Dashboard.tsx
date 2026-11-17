@@ -140,6 +140,9 @@ export default function Dashboard() {
     };
   }, [selectedId, devices]);
 
+  // Set server-side in app_metadata (not user-editable) by the demo migration.
+  const isDemo = user?.app_metadata?.demo === true;
+
   const handleSelectDevice = useCallback(
     (deviceId: string) => {
       setSelectedId(deviceId);
@@ -166,6 +169,7 @@ export default function Dashboard() {
         selectedId={selectedId}
         lastSeen={lastSeen}
         onSelectDevice={handleSelectDevice}
+        isDemo={isDemo}
       />
 
       <main
@@ -177,6 +181,26 @@ export default function Dashboard() {
           margin: "0 auto",
         }}
       >
+        {isDemo && (
+          <div
+            style={{
+              background: "rgba(46,125,82,0.07)",
+              border: "1px solid rgba(46,125,82,0.25)",
+              borderRadius: "12px",
+              padding: "14px 20px",
+              marginBottom: "24px",
+              fontFamily: "'DM Mono', monospace",
+              fontSize: "13px",
+              lineHeight: 1.6,
+              color: "#2F6F49",
+            }}
+          >
+            You are signed in to the read-only demo account. These plants are not
+            real boards: the database generates a reading for each one every 5
+            minutes, in the same format the Arduino posts.
+          </div>
+        )}
+
         {error && (
           <div
             style={{

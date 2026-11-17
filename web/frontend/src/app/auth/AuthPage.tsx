@@ -4,6 +4,13 @@ import "./AuthPage.css";
 
 type AuthMode = "login" | "signup";
 
+// Public demo login (see web/backend/database/migrations/2026-11-17_demo_account.sql).
+// These are deliberately public — the account is read-only and its password
+// cannot be changed from a session. Leave them unset and the button disappears.
+const DEMO_EMAIL = import.meta.env.VITE_DEMO_EMAIL as string | undefined;
+const DEMO_PASSWORD = import.meta.env.VITE_DEMO_PASSWORD as string | undefined;
+const DEMO_ENABLED = Boolean(DEMO_EMAIL && DEMO_PASSWORD);
+
 export default function AuthPage() {
   const [mode, setMode] = useState<AuthMode>("login");
   const [displayName, setDisplayName] = useState("");
@@ -32,6 +39,26 @@ export default function AuthPage() {
       const errorMessage =
         err instanceof Error ? err.message : "Authentication failed";
       setMessage(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // A real sign-in through Supabase Auth with the demo credentials — the same
+  // path as the form, so it proves the login works rather than skipping it.
+  async function handleDemoLogin() {
+    if (!DEMO_EMAIL || !DEMO_PASSWORD) return;
+    setMode("login");
+    setEmail(DEMO_EMAIL);
+    setPassword(DEMO_PASSWORD);
+    setLoading(true);
+    setMessage("");
+
+    try {
+      await signInUser(DEMO_EMAIL, DEMO_PASSWORD);
+      setMessage("Logged in successfully.");
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : "Demo login failed");
     } finally {
       setLoading(false);
     }
@@ -165,6 +192,27 @@ export default function AuthPage() {
                 : "Create Account"}
             </button>
           </form>
+
+          {DEMO_ENABLED && mode === "login" && (
+            <div className="auth-demo">
+              <div className="auth-demo-divider">
+                <span>or</span>
+              </div>
+              <button
+                type="button"
+                className="auth-demo-btn"
+                onClick={handleDemoLogin}
+                disabled={loading}
+              >
+                Try the demo account
+              </button>
+              <p className="auth-demo-note">
+                Read-only, with simulated sensor data.
+                <br />
+                <code>{DEMO_EMAIL}</code> / <code>{DEMO_PASSWORD}</code>
+              </p>
+            </div>
+          )}
 
           {message && (
             <div
