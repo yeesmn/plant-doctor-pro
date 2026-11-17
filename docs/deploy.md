@@ -1,8 +1,13 @@
 # Deploying the backend
 
-The Express gateway in [web/backend](../web/backend) currently runs on a development PC, so
-readings only reach Supabase while that machine is awake and on the same network
-([plan.md](plan.md) 5.7). This is how to put it somewhere always-on.
+> **Status: deployed.** Both services run from the `plant-doctor-pro` Render Blueprint —
+> `plant-doctor-pro-backend` (Node) and `plant-doctor-pro-frontend` (static, live since
+> 2026-11-17 at <https://plant-doctor-pro-frontend.onrender.com>). The steps below are kept
+> for redeploying or rebuilding from scratch.
+
+The Express gateway in [web/backend](../web/backend) used to run on a development PC, so
+readings only reached Supabase while that machine was awake and on the same network
+([plan.md](plan.md) 5.7). This is how it was moved somewhere always-on.
 
 Only one endpoint is exposed: `POST /api/sensor-data`, plus an unauthenticated
 `GET /health`. The dashboard does not use this server at all — it reads Supabase directly.
@@ -110,8 +115,8 @@ difference.
   pairing flow in [plan.md](plan.md) 5.5.
 - **Physical extraction.** The secret sits in the sketch's flash in plaintext. Anyone with
   the board can read it.
-- **The PC is still needed for the dashboard**, which runs under Vite locally. Deploying the
-  frontend is a separate job.
+- ~~The PC is still needed for the dashboard.~~ No longer true — the dashboard is deployed
+  too; see below.
 
 ---
 
@@ -133,6 +138,12 @@ Render → the existing `plant-doctor-pro` Blueprint → **Manual sync**. It cre
 
 `VITE_USE_MOCK` is pinned to `false` in the blueprint. It bypasses the login gate entirely,
 which is fine locally and unacceptable on a public URL.
+
+**These are build-time values, not runtime ones.** Vite inlines them into the bundle, so if
+a build runs before they are set, the site ships `createClient(undefined, undefined)` and
+shows a blank page (`supabaseUrl is required` in the console). That is exactly what the
+first deploy did. After adding or changing either value, run **Manual Deploy → Clear build
+cache & deploy** — saving the variable alone does not rebuild the bundle.
 
 Both values end up in the JavaScript bundle. That is by design: they identify the project
 and nothing more, and row-level security is what keeps one user's plants out of another

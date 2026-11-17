@@ -114,15 +114,15 @@ within each tier.
 
 | # | Issue | Priority |
 |---|---|---|
-| [5.9](#59--pick-your-own-device-after-login--done-2026-09-05) | Pick your own device after login + deploy the dashboard | ✅ done |
-| [5.8](#58--backend-deployment-readiness--p1-in-progress) | Backend deployment readiness | **P1 — in progress** |
+| [5.9](#59--pick-your-own-device-after-login--done-2026-09-05) | Pick your own device after login + deploy the dashboard | ✅ done — dashboard live 2026-11-17 |
+| [5.8](#58--backend-deployment-readiness--done-deployed-on-render) | Backend deployment readiness | ✅ done — deployed on Render |
 | [5.1](#51--soil-moisture-is-uncalibrated-blocks-health-scoring--p1-code-done--needs-measuring) | Soil moisture is uncalibrated | P1 — code done, needs measuring |
 | [5.2](#52--recorded_at-has-no-time-zone--p1-done-migration-run-2026-07-25) | `recorded_at` has no time zone | ✅ done |
 | [5.3](#53--service_role-key-sits-in-the-frontend-env--done-2026-07-25) | `service_role` key sits in the frontend `.env` | ✅ done |
 | [5.4](#54--no-long-run-reliability-data--p2-scheduled) | No long-run reliability data | P2 — scheduled with the hardware team |
 | [5.5](#55--device-identity--pairing--p2) | Device identity & pairing | P2 |
 | [5.6](#56--dashboard-sections-still-on-mock-data--p3) | Dashboard sections still on mock data | P3 |
-| [5.7](#57--the-pipeline-depends-on-the-pc-being-awake--p3) | The pipeline depends on the PC being awake | P3 |
+| [5.7](#57--the-pipeline-depends-on-the-pc-being-awake--done-via-58) | The pipeline depends on the PC being awake | ✅ done (via 5.8) |
 
 ### 5.1 — Soil moisture is uncalibrated (blocks health scoring) — **P1, code done / needs measuring**
 
@@ -316,9 +316,9 @@ switch devices. `fetchNewestDevice()` needs a `fetchDevices()` sibling plus a se
 - **Watering events** — no table, so watering markers were removed from the history
   chart. Add one if the feature is wanted.
 
-### 5.7 — The pipeline depends on the PC being awake — **P3**
+### 5.7 — The pipeline depends on the PC being awake — **DONE (via 5.8)**
 
-Today the Arduino POSTs to the developer PC's LAN IP, so nothing is recorded when the PC
+Originally the Arduino POSTed to the developer PC's LAN IP, so nothing is recorded when the PC
 is off, asleep, or on another network. Two options:
 
 - **A** — host the Express backend somewhere always-on (small VPS / container host) and
@@ -327,9 +327,10 @@ is off, asleep, or on another network. Two options:
   middleware. Fewer moving parts, but the device then holds a Supabase key and the
   server-side validation is lost.
 
-**Option A is in progress** — see 5.8 and
-[deploy.md](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/docs/deploy.md). The endpoint
-is no longer open: 5.8 step 3 added a shared device secret, which is the minimum that had to
+**Option A shipped** — the backend runs on Render (see 5.8 and
+[deploy.md](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/docs/deploy.md)), and since
+2026-11-17 the dashboard does too, so neither half of the pipeline needs the PC any more. The
+endpoint is not open: 5.8 step 3 added a shared device secret, which is the minimum that had to
 land before exposing it. Full per-device identity is still 5.5.
 
 Option B's trade-off got worse on inspection: posting straight to Supabase would put a
@@ -337,7 +338,10 @@ Supabase key on the device instead of a scoped secret, and lose the input valida
 5.8 step 4.
 
 
-### 5.8 — Backend deployment readiness — **P1, in progress**
+### 5.8 — Backend deployment readiness — **DONE, deployed on Render**
+
+All five steps below are done and the service `plant-doctor-pro-backend` is live on Render's
+free tier, declared in [render.yaml](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/render.yaml).
 
 Deploying the Express backend was requested on 2026-08-11 (this is 5.7 option A). An audit
 of what has to change first, worked **one step at a time, each reviewed before the next**.
@@ -508,6 +512,11 @@ Deployment is declared in [render.yaml](file:///c:/Users/yeesm/Work/arduino/plan
 as a static site alongside the backend; the steps, including the Supabase Auth URL
 configuration that sign-up emails depend on, are in
 [deploy.md](file:///c:/Users/yeesm/Work/arduino/plant-doctor-pro/docs/deploy.md).
+
+**Deployed 2026-11-17** at <https://plant-doctor-pro-frontend.onrender.com>. The first build
+shipped `createClient(undefined, undefined)` — the `VITE_*` values were not set when it ran,
+and Vite bakes them in at build time — so the page died on load with `supabaseUrl is
+required`. Setting both variables and redeploying with a cleared build cache fixed it.
 
 **Not included** (still 5.5 / 5.6): adding, renaming or removing plants from the UI, and the
 `CareSuggestions` / `DeviceFooter` mock data.
